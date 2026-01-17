@@ -1,50 +1,454 @@
-# The Code Proctor - AI Technical Interviewer
+# ARETE - AI Technical Interview Platform
 
-**One-Liner:** An AI interviewer that watches you code via a live editor, runs your code in a sandbox, and interrupts you verbally when you introduce a logical error—like a real senior engineer.
+**One-Liner:** A realistic AI interviewer with a human avatar that conducts LeetCode-style technical interviews via video call, watches you code in real-time, provides live hints on logical errors, detects hiring bias, and generates comprehensive reports for recruiters.
 
-**Strategy:** Using **OpenRouter** (Llama 3.1 70B) for cheap, fast inference. Optimizing for low latency and active interruption (not passive chat).
+**VC Pitch Angle:** Cost-optimized multi-agent system that replaces $200/hr technical interviewers with a $2 AI interview—scalable to 10,000+ interviews/day.
 
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    FRONTEND (React + Vite)                          │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    Monaco Editor (Live)                       │   │
-│  │     → onChange debounce (1.5s) → CODE_SNAPSHOT data packet   │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐     │
-│  │  Voice Chat  │  │  Run Button  │  │  /recruiter Dashboard  │     │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘     │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                   BACKEND (livekit-agents Python)                    │
-│  ┌─────────────────────┐    ┌─────────────────────┐                 │
-│  │  Conversation       │    │  Analysis Thread    │                 │
-│  │  Thread (OpenRouter)│◄───┤  (Code Watcher)     │                 │
-│  └─────────────────────┘    └─────────────────────┘                 │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │  EXECUTION HARNESS: inject fn → run tests → structured result  ││
-│  └─────────────────────────────────────────────────────────────────┘│
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │  EVENT LOG: CODE_SNAPSHOT | INTERRUPT | RUN_RESULT | VERDICT   ││
-│  └─────────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────────┘
-         │                             │
-         ▼                             ▼
-  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-  │  LiveKit    │  │ OpenRouter  │  │ ElevenLabs  │  │Arize Phoenix│
-  │  (WebRTC)   │  │(Llama 3.1)  │  │   (TTS)     │  │  (Traces)   │
-  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
-```
+**Target Market:** Big tech companies conducting high-volume LeetCode-style technical interviews for SWE roles.
 
 ---
 
-## Problem Bank (Content Layer)
+## System Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                    CANDIDATE VIEW (React/Next.js)                     │
+│  ┌────────────────────┐  ┌────────────────────────────────────────┐  │
+│  │  AI Avatar Video   │  │      Monaco Editor (Live Code)         │  │
+│  │  (Realistic Human) │  │  → onChange (1.5s) → CODE_SNAPSHOT     │  │
+│  │  + Voice (WebRTC)  │  │  → Real-time hints on logical errors   │  │
+│  └────────────────────┘  └────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │  [Run Code] [Submit Solution] [Chat Messages]                   │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                  BACKEND (FastAPI + LangGraph)                        │
+│                                                                        │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                    AGENT 1: INTERVIEWER                         │  │
+│  │  • Asks LeetCode problems (2Sum, Merge Intervals, etc.)        │  │
+│  │  • Watches code in real-time via CODE_SNAPSHOT events          │  │
+│  │  • Detects logical errors → interrupts with hints              │  │
+│  │  • Encourages good approaches                                   │  │
+│  │  • Scores: correctness, optimization, communication            │  │
+│  │  • LLM: Claude 3.5 Sonnet (via Anthropic API)                  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                    │                                  │
+│                                    ▼                                  │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                  AGENT 2: FAIRNESS MONITOR                      │  │
+│  │  • Analyzes interview transcript for bias signals              │  │
+│  │  • Flags unfair questions or microaggressions                  │  │
+│  │  • Normalizes scores across demographic groups                 │  │
+│  │  • Generates bias report for recruiter dashboard               │  │
+│  │  • LLM: Claude 3 Haiku (cheaper, sufficient for analysis)      │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                    │                                  │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  CODE EXECUTION ENGINE (Sandboxed Python Subprocess)           │  │
+│  │  • Runs candidate code in isolated environment                 │  │
+│  │  • Returns stdout/stderr/test_results                          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────┘
+         │              │              │              │
+         ▼              ▼              ▼              ▼
+  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌──────────────┐
+  │  LiveKit  │  │  Claude   │  │ElevenLabs │  │Arize Phoenix │
+  │ (Video +  │  │   API     │  │   (TTS)   │  │  (Tracing)   │
+  │  Voice)   │  │           │  │           │  │              │
+  └───────────┘  └───────────┘  └───────────┘  └──────────────┘
+         │
+         ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                    RECRUITER DASHBOARD (React)                        │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  Candidate: John Doe | Problem: Two Sum | Duration: 23:45     │  │
+│  ├────────────────────────────────────────────────────────────────┤  │
+│  │  SCORES:                                                        │  │
+│  │  • Correctness: 8/10   • Code Quality: 7/10                    │  │
+│  │  • Communication: 9/10 • Problem Solving: 8/10                 │  │
+│  │  • Overall: 8.0/10 → STRONG HIRE                              │  │
+│  ├────────────────────────────────────────────────────────────────┤  │
+│  │  FAIRNESS ASSESSMENT:                                          │  │
+│  │  • Bias detected: None                                         │  │
+│  │  • Question difficulty: Appropriate for level                  │  │
+│  │  • Hint frequency: Within normal range                         │  │
+│  ├────────────────────────────────────────────────────────────────┤  │
+│  │  INTERVIEW ARTIFACTS:                                          │  │
+│  │  • [Download Video Recording] [View Transcript]               │  │
+│  │  • [View Code Submissions] [See Phoenix Trace]                │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2-Agent Orchestration (LangGraph)
+
+### Agent 1: Technical Interviewer (Real-time)
+
+**Role:** Conducts the live interview, watches code, provides hints, scores performance
+
+**Input State:**
+```python
+{
+  "problem": "Two Sum",  # LeetCode problem metadata
+  "difficulty": "Easy",
+  "optimal_solution": "...",  # Reference solution
+  "code_snapshot": "def twoSum(nums, target):\n  ...",  # Live code
+  "conversation_history": [...],
+  "candidate_name": "John Doe"
+}
+```
+
+**Core Logic Loop:**
+```
+1. Present problem via avatar speech
+2. Monitor CODE_SNAPSHOT events (every 1.5s)
+   │
+   ▼
+3. Analyze code changes:
+   ├─ TYPO/SYNTAX → Ignore (let them fix)
+   ├─ LOGICAL ERROR → Interrupt with hint
+   │   "I noticed you're iterating twice. Can we do this in one pass?"
+   ├─ GOOD APPROACH → Encourage
+   │   "Great! That's the right direction. Keep going."
+   └─ STUCK (no changes for 2min) → Prompt
+       "Need a hint? Think about using a hash map..."
+4. When candidate clicks "Run Code":
+   → Execute in sandbox
+   → Return test results
+   → Ask follow-up: "All tests passed! Can you optimize the space complexity?"
+5. Score final solution:
+   → Correctness (passes all tests)
+   → Time/Space Complexity
+   → Code readability
+   → Communication (explained approach verbally)
+```
+
+**Output:**
+```python
+{
+  "interview_transcript": [...],
+  "code_submissions": [...],
+  "scores": {
+    "correctness": 8,
+    "optimization": 7,
+    "communication": 9,
+    "problem_solving": 8
+  },
+  "interviewer_notes": "Candidate struggled initially but recovered with hints..."
+}
+```
+
+### Agent 2: Fairness Monitor (Post-Interview)
+
+**Role:** Analyzes interview for bias, normalizes scores, flags issues
+
+**Input:** Agent 1's complete output + candidate metadata
+
+**Analysis:**
+```
+1. Transcript analysis:
+   ✓ Did interviewer ask inappropriate questions?
+   ✓ Were hints distributed fairly?
+   ✓ Was tone consistent throughout?
+
+2. Score normalization:
+   ✓ Compare to historical data (same problem, similar difficulty)
+   ✓ Adjust for hint frequency (gave 3 hints → slightly lower score)
+   ✓ Flag statistical anomalies
+
+3. Bias detection:
+   ✓ Check for microaggressions in language
+   ✓ Ensure question difficulty matches candidate level
+   ✓ Validate scoring consistency
+```
+
+**Output:**
+```python
+{
+  "bias_detected": False,
+  "fairness_score": 9.2,
+  "flags": [],
+  "normalized_scores": {
+    "correctness": 8,
+    "optimization": 7,
+    "communication": 9,
+    "problem_solving": 8,
+    "overall": 8.0
+  },
+  "recommendation": "STRONG HIRE",
+  "confidence": 0.87
+}
+```
+
+---
+
+## LangGraph State Flow
+
+```
+START
+  │
+  ├─ Initialize InterviewState (problem, candidate info)
+  │
+  ▼
+┌───────────────────────┐
+│  AGENT 1: INTERVIEWER │  (15-25 minutes, real-time)
+│  - Present problem    │
+│  - Watch code         │
+│  - Give hints         │
+│  - Run tests          │
+│  - Score solution     │
+└───────────────────────┘
+  │
+  │ (Interview complete, state contains transcript + scores)
+  │
+  ▼
+┌───────────────────────┐
+│ AGENT 2: FAIRNESS     │  (30 seconds, async)
+│ - Analyze transcript  │
+│ - Normalize scores    │
+│ - Detect bias         │
+│ - Generate report     │
+└───────────────────────┘
+  │
+  ▼
+RECRUITER DASHBOARD
+(Display scores, video, transcript, bias report)
+```
+
+---
+
+## Cost Optimization Strategy (VC Pitch Focus)
+
+### Problem: Traditional Technical Interviews Are Expensive
+
+| Cost Component | Traditional (Human) | ARETE (AI) | Savings |
+|----------------|---------------------|------------|---------|
+| Interviewer time | $200/hr × 1 hr | $2 (LLM + infra) | **99% reduction** |
+| Scheduling overhead | ~30 min coordination | Instant (24/7 available) | **100% reduction** |
+| Bias training | $5K/year per interviewer | Built-in fairness agent | **Continuous, automated** |
+| Scaling to 10K interviews/month | Hire 200+ engineers | Same infrastructure | **Linear → O(1) scaling** |
+
+### Cost Breakdown (Per Interview)
+
+```
+LLM Costs (Claude API):
+  • Agent 1 (Interviewer): ~20K tokens @ $3/1M tokens = $0.06
+  • Agent 2 (Fairness): ~5K tokens @ $0.60/1M tokens (Haiku) = $0.003
+  • Total LLM: $0.063
+
+Infrastructure:
+  • LiveKit: $0.004/min × 20 min = $0.08
+  • TTS (ElevenLabs): $0.30/10K chars ≈ $0.15
+  • Avatar rendering: $0 (cheap static solution, see below)
+  • Storage (video/transcript): $0.01
+  • Compute (FastAPI + sandbox): $0.10
+
+Total Cost Per Interview: ~$0.40
+
+With 20% buffer: $0.50/interview
+```
+
+**Revenue Model (for VC pitch):**
+- Charge $5/interview → **10x margin**
+- Enterprise tier: $10K/month for unlimited interviews
+- Target: 100 companies × 1,000 interviews/month = **$500K MRR**
+
+### Avatar: Realistic But Cheap Solution
+
+**Challenge:** Synthesia/HeyGen cost $30-50/min → Not scalable
+
+**Our Approach:**
+```
+Option 1: Static Photo + Lip Sync (CHOSEN FOR DEMO)
+  • Use D-ID API: $0.10/min (20× cheaper than HeyGen)
+  • Upload 1 professional headshot
+  • Real-time lip-sync with TTS audio
+  • Good enough for demo, feels realistic
+  • Cost: $0.10/min × 20 min = $2/interview
+
+Option 2: Wav2Lip (Open Source, Self-Hosted)
+  • Free inference (GPU costs ~$0.20/hr)
+  • Slower (not real-time), but works for async processing
+  • Cost: ~$0.10/interview
+  • Requires engineering effort to set up
+
+Option 3: Ready Player Me Avatar (Backup)
+  • Free 3D avatar
+  • Basic lip-sync with visemes
+  • Less realistic but shows concept
+  • Cost: $0
+```
+
+**Demo Strategy:** Use D-ID API for hackathon demo (realistic, easy), then pitch Wav2Lip for production (10× cheaper at scale).
+
+---
+
+## Tech Stack
+
+### Frontend (React + Next.js)
+```json
+{
+  "next": "^14.2.0",
+  "react": "^18.3.0",
+  "@livekit/components-react": "^2.7.0",
+  "@monaco-editor/react": "^4.6.0",
+  "tailwindcss": "^3.4.0",
+  "lucide-react": "^0.400.0"
+}
+```
+
+### Backend (FastAPI + LangGraph)
+```txt
+fastapi==0.115.0
+uvicorn==0.31.0
+langgraph==0.2.45
+langchain-anthropic==0.3.0
+anthropic==0.39.0
+livekit==0.12.0
+livekit-agents==0.8.0
+livekit-plugins-elevenlabs==0.6.0
+arize-phoenix==6.2.0
+opentelemetry-api==1.28.0
+sqlalchemy==2.0.35
+psycopg2-binary==2.9.10
+redis==5.2.0
+python-dotenv==1.0.1
+```
+
+### External Services
+- **LiveKit Cloud** - Video/voice WebRTC
+- **Claude API (Anthropic)** - LLM for both agents
+- **ElevenLabs** - Text-to-speech
+- **D-ID** - Realistic avatar lip-sync
+- **Arize Phoenix** - Observability (local instance)
+
+---
+
+## Environment Variables
+
+```bash
+# Claude API (Anthropic)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# LiveKit (Video + Voice)
+LIVEKIT_URL=wss://your-instance.livekit.cloud
+LIVEKIT_API_KEY=APIxxx
+LIVEKIT_API_SECRET=secretxxx
+
+# ElevenLabs (TTS)
+ELEVENLABS_API_KEY=...
+
+# D-ID (Avatar)
+DID_API_KEY=...
+
+# Arize Phoenix (Observability)
+PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/arete
+
+# Redis (Caching)
+REDIS_URL=redis://localhost:6379
+```
+
+---
+
+## Key Innovations
+
+### 1. Real-time Code Understanding (Not a Linter)
+
+| Behavior | Traditional Linter | ARETE Interviewer |
+|----------|-------------------|-------------------|
+| Typo/syntax error | ❌ Flag immediately | ✅ Ignore (let candidate fix) |
+| Logical flaw (wrong algo) | ❌ Can't detect | ✅ Interrupt with hint |
+| Good approach | ❌ No feedback | ✅ Encourage progress |
+| Stuck for 2+ min | ❌ Silent | ✅ Proactive hint |
+
+### 2. Human-like Avatar Interaction
+
+- **Realistic appearance** (D-ID lip-sync) creates psychological engagement
+- **Voice interruptions** feel natural (not just chat-based feedback)
+- **Non-verbal cues** (avatar nods, smiles) enhance candidate experience
+
+### 3. Built-in Fairness (Arize Phoenix Track)
+
+- **Transparent scoring** - Judges can see exact reasoning in Phoenix dashboard
+- **Bias detection** - Agent 2 flags unfair questions/tone
+- **Normalized scoring** - Compares to historical data, adjusts for hint frequency
+
+### 4. 99% Cost Reduction at Scale
+
+- Traditional: $200/hr interviewer × 1,000 interviews/month = $200K
+- ARETE: $0.50/interview × 1,000 interviews/month = $500
+- **Savings: $199,500/month** for a mid-sized company
+
+---
+
+## 5-Minute Demo Flow (For Judges)
+
+```
+[0:00-0:30] Landing Page
+  → "Welcome to ARETE. Click 'Start Interview' to begin."
+  → Shows: Problem = "Two Sum (Easy)", Timer starts
+
+[0:30-1:00] Video Room Loads
+  → Candidate video (webcam) appears on left
+  → AI Avatar (realistic human) appears on right
+  → Monaco editor appears in center
+  → Avatar speaks: "Hi! I'm Sarah, your technical interviewer today.
+     Let's start with a classic problem: Two Sum..."
+
+[1:00-3:30] Live Coding with Real-time Hints
+  → Candidate types code in Monaco editor
+  → At 1:45, candidate writes inefficient nested loop:
+      for i in range(len(nums)):
+          for j in range(len(nums)):
+              if nums[i] + nums[j] == target:
+  → Avatar interrupts: "I see you're using a nested loop. That works,
+     but can we optimize this? Think about what data structure allows
+     O(1) lookups..."
+  → Candidate corrects to hash map approach
+  → Avatar: "Perfect! That's much better. Now let's test it."
+  → Candidate clicks "Run Code" → Tests pass ✅
+
+[3:30-4:00] Results & Recruiter Dashboard
+  → Interview ends, transitions to dashboard
+  → Shows scores:
+      Correctness: 9/10
+      Optimization: 7/10 (needed hint)
+      Communication: 8/10
+      Overall: 8.0/10 → STRONG HIRE
+  → Shows fairness report: "No bias detected"
+  → Shows download links: [Video Recording] [Transcript]
+
+[4:00-4:30] Phoenix Dashboard (Arize Track)
+  → Switch to localhost:6006 (Phoenix UI)
+  → Show real-time trace:
+      ├─ interviewer_agent (20.3s, 18.5K tokens)
+      │   ├─ present_problem (2.1s)
+      │   ├─ analyze_code_snapshot_1 (1.8s)
+      │   ├─ give_hint (2.3s)  ← Reasoning visible
+      │   └─ score_solution (1.2s)
+      └─ fairness_agent (0.8s, 4.2K tokens)
+      └─ bias_analysis (0.8s)  ← No flags
+  → Highlight: Token usage, latency, exact prompts visible
+
+[4:30-5:00] Q&A + Cost Pitch
+  → "This interview cost $0.40. A human interviewer costs $200.
+     We can scale to 10,000 interviews/day with the same infrastructure."
+```
+
+---
+
+## Technical Implementation Details (from Prototype)
+
+### Problem Bank (Content Layer)
 
 In-repo problem definitions give the interviewer ground truth for analysis.
 
@@ -72,9 +476,7 @@ merge all overlapping intervals and return an array of non-overlapping intervals
 }
 ```
 
----
-
-## Execution Harness (Grader)
+### Execution Harness (Grader)
 
 Wraps candidate code, runs test cases, returns structured results.
 
@@ -115,9 +517,7 @@ def run_tests(candidate_code: str, problem: dict) -> dict:
     return result
 ```
 
----
-
-## Event Log Pipeline
+### Event Log Pipeline
 
 Unified event schema drives dashboard, reports, and traces.
 
@@ -148,134 +548,44 @@ def log_event(event_type: EventType, session_id: str, payload: dict):
     ))
 ```
 
-**Event Types:**
-| Event | Payload |
-|-------|---------|
-| `CODE_SNAPSHOT` | `{code, line_count}` |
-| `INTERRUPT` | `{message, flaw_type}` |
-| `ENCOURAGE` | `{message}` |
-| `RUN_RESULT` | `{passed, failed, stderr}` |
-| `FINAL_VERDICT` | `{decision, summary, flags}` |
+---
+
+## Out of Scope (24-Hour Hackathon)
+
+**Not Building:**
+- Authentication/user accounts (just direct links)
+- Email notifications
+- Multiple programming languages (Python only)
+- Mobile app (desktop web only)
+- Historical analytics dashboard (mock data is fine)
+- Production-grade security (sandbox is basic subprocess isolation)
+- Video recording storage (save locally, no S3/cloud)
+
+**What Can Be Faked/Simplified:**
+- Resume upload (skip, go straight to interview)
+- Interview scheduling (just "Start Interview" button)
+- Payment/billing (out of scope)
+- Multi-user support (single interview at a time)
 
 ---
 
-## Recruiter Dashboard (`/recruiter`)
+## Success Metrics (Judge Perspective)
 
-Live view + final report card. In-memory, fake-data ready for demo.
+### LiveKit Agent Track ✅
+- **Real-time voice/video** - Candidate and avatar communicate via WebRTC
+- **Multi-agent orchestration** - 2 agents collaborate sequentially
+- **Low latency** - Avatar responds <2 seconds after code change
 
-**Live View:**
-```
-┌────────────────────────────────────────────────────────────────┐
-│  CANDIDATE: demo_user_123          STATUS: 🟢 In Progress      │
-├────────────────────────────────────────────────────────────────┤
-│  Problem: Merge Intervals                                       │
-│  Time Elapsed: 12:34                                            │
-│  Interrupts: 2    Encouragements: 3    Runs: 4 (3 pass)        │
-└────────────────────────────────────────────────────────────────┘
-```
+### Arize Phoenix Track ✅
+- **Full observability** - Every agent decision traced in Phoenix UI
+- **Real-time dashboard** - Judges can see live traces during interview
+- **Bias detection** - Fairness agent outputs logged and queryable
 
-**Final Report Card (generated from EVENT_LOG):**
-```
-┌────────────────────────────────────────────────────────────────┐
-│  VERDICT: ✅ HIRE                                               │
-├────────────────────────────────────────────────────────────────┤
-│  Problem Solving: Strong                                        │
-│  Code Quality: Good (minor style issues)                        │
-│  Communication: Excellent                                       │
-├────────────────────────────────────────────────────────────────┤
-│  Key Flags:                                                     │
-│  • Initially attempted O(n²), self-corrected after prompt       │
-│  • Clean variable naming                                        │
-│  • Asked clarifying questions before coding                     │
-├────────────────────────────────────────────────────────────────┤
-│  Summary: Candidate demonstrated strong algorithmic thinking.   │
-│  Recovered well from initial suboptimal approach when prompted. │
-└────────────────────────────────────────────────────────────────┘
-```
+### Developer Tool Track ✅
+- **Solves real problem** - Replaces expensive human interviewers
+- **Production-ready architecture** - FastAPI, LangGraph, database, error handling
+- **Clear ROI** - 99% cost reduction, infinite scaling
 
 ---
 
-## Core Logic: The Proctor Loop
-
-**Context-Aware:** Agent has the problem definition + optimal approach.
-
-```
-Receive CODE_SNAPSHOT → Send to LLM with problem context
-                                     │
-                                     ▼
-                            ┌─────────────────┐
-                            │  DECISION TREE  │
-                            ├─────────────────┤
-                            │ TYPO → IGNORE   │
-                            │ LOGIC FLAW →    │  INTERRUPT
-                            │ RIGHT APPROACH →│  ENCOURAGE
-                            └─────────────────┘
-                                     │
-                                     ▼
-                    log_event() + api.play_tts(feedback)
-```
-
----
-
-## Tech Stack
-
-### Frontend
-```json
-{
-  "livekit-client": "^2.7.0",
-  "@monaco-editor/react": "^4.6.0",
-  "lucide-react": "^0.400.0"
-}
-```
-
-### Backend
-```text
-livekit-agents>=0.8.0
-livekit-plugins-openai>=0.6.0
-livekit-plugins-elevenlabs>=0.6.0
-livekit-plugins-deepgram>=0.6.0
-arize-phoenix
-python-dotenv
-```
-
----
-
-## Environment Variables
-
-```bash
-LIVEKIT_URL=wss://...
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-OPENROUTER_API_KEY=sk-or-v1-...
-ELEVEN_API_KEY=...
-PHOENIX_API_KEY=...
-PHOENIX_COLLECTOR_ENDPOINT=...
-```
-
----
-
-## Submission Requirements
-
-### README Must Include:
-- [ ] **How to run locally** (even if hacky: `pip install -r requirements.txt && python agent.py`)
-- [ ] **External tools/libraries credits** (LiveKit, OpenRouter, ElevenLabs, Arize, Monaco)
-- [ ] **Architecture overview** (can link to this PRD)
-- [ ] **Demo video link** (optional but recommended)
-
-### Repo Checklist:
-- [ ] Code accessible via public GitHub link
-- [ ] `.env.example` with placeholder keys
-- [ ] `requirements.txt` and `package.json` complete
-- [ ] No secrets committed
-
----
-
-## Out of Scope (24hr)
-
-- Authentication, production scaling, email notifications
-- Multiple languages (Python only), video recording, mobile
-- Persistent storage (in-memory only)
-
----
-
-*NexHacks 2026 — Build fast, ship faster.* 🚀
+*NexHacks 2026 @ CMU — Shipping ARETE in 24 hours* 🚀
