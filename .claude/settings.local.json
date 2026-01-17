@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/rohanmuppa/Documents/nexhacks-26 status)",
+      "Bash(git -C /Users/rohanmuppa/Documents/nexhacks-26 config --local -l)"
+    ]
+  }
+}
