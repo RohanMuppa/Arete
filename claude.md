@@ -19,6 +19,36 @@ ARETE is a cost-optimized AI interviewing platform that:
 - Generates **recruiter dashboards** with scores, video recordings, and transcripts
 - **Costs $0.40 per interview** vs. $200 for human interviewers (99% cost reduction)
 
+## What's Real vs. Mocked (24-Hour Hackathon Strategy)
+
+### ✅ FULLY FUNCTIONAL (Real Implementation):
+1. **Candidate interview page** (`/interview/[id]`)
+   - LiveKit video call with AI avatar
+   - Monaco code editor with real-time code watching
+   - Agent 1 watches code, interrupts/encourages via voice
+   - "Run Code" executes Python in sandbox
+   - "Submit Solution" ends interview
+2. **Agent 1 (Interviewer)** - Full LangGraph implementation
+3. **Agent 2 (Fairness Monitor)** - Full LangGraph implementation
+4. **Arize Phoenix tracing** - All agent decisions visible in real-time
+5. **Backend APIs** - FastAPI with all core endpoints
+
+### ⚠️ MOCKED (Static Data for Demo):
+1. **Recruiter dashboard** (`/dashboard/[id]`)
+   - Simple React page with **hardcoded JSON scores**
+   - Shows what the UI would look like in production
+   - **Does NOT** pull real data from Agent 2
+   - Saves 2-3 hours of backend integration work
+   - Judges will see concept, not full implementation
+
+**Why mock the dashboard?**
+- Focus limited time on the **live interview experience** (where innovation is)
+- Dashboard is just a display layer (not technically interesting)
+- Agent 2 still runs and generates real data (visible in Phoenix)
+- For demo: Switch to pre-opened dashboard tab with realistic mock data
+
+**If judges ask:** "This shows what recruiters would see in production. For the hackathon, we pre-loaded realistic data to save dev time and focus on the interview AI and observability."
+
 ## Core Technologies
 
 ### Backend
@@ -236,16 +266,19 @@ nexhacks-26/
 │   │   ├── page.tsx                     # Landing page
 │   │   ├── interview/
 │   │   │   └── [id]/
-│   │   │       └── page.tsx             # Live interview room
+│   │   │       └── page.tsx             # Live interview room (REAL - fully functional)
 │   │   └── dashboard/
 │   │       └── [id]/
-│   │           └── page.tsx             # Recruiter results dashboard
+│   │           └── page.tsx             # Recruiter dashboard (MOCKED - static data)
 │   ├── components/
 │   │   ├── LiveKitRoom.tsx              # Video call wrapper
 │   │   ├── AvatarVideo.tsx              # D-ID avatar display
 │   │   ├── CodeEditor.tsx               # Monaco editor wrapper
 │   │   ├── TestResults.tsx              # Code execution output
-│   │   └── ScoresDashboard.tsx          # Final scores display
+│   │   └── ScoresDashboard.tsx          # Final scores display (uses mock data)
+│   ├── lib/
+│   │   ├── api.ts                       # Backend API client
+│   │   └── mockData.ts                  # Mock scores/reports for dashboard
 │   ├── lib/
 │   │   └── api.ts                       # Backend API client
 │   ├── package.json
@@ -422,7 +455,140 @@ def execute_python_code(code: str, test_cases: list) -> dict:
 
 ---
 
-### 5. Arize Phoenix Tracing (Observability)
+### 5. Mocked Recruiter Dashboard (Save 2-3 Hours)
+
+**Strategy:** Build a beautiful UI with hardcoded data instead of real backend integration.
+
+**Why mock it?**
+- Judges care more about the **live interview AI** than a data display page
+- Agent 2 still runs for real (visible in Phoenix), just not connected to dashboard
+- Saves 2-3 hours of API integration, polling, state management
+- Shows judges the product vision without unnecessary backend work
+
+**Implementation (1 hour max):**
+
+**Step 1: Create mock data file**
+```typescript
+// frontend/lib/mockData.ts
+export const mockInterviewResult = {
+  interview_id: "abc123",
+  candidate_name: "John Doe",
+  problem: "Two Sum",
+  difficulty: "Easy",
+  duration_minutes: 23,
+  timestamp: "2026-01-17T10:30:00Z",
+
+  scores: {
+    correctness: 9,
+    optimization: 7,
+    code_quality: 8,
+    communication: 8,
+    problem_solving: 8,
+    overall: 8.0
+  },
+
+  recommendation: "STRONG HIRE",
+  confidence: 0.87,
+
+  fairness: {
+    bias_detected: false,
+    fairness_score: 9.2,
+    hint_frequency: "Within normal range",
+    question_difficulty: "Appropriate for level",
+    flags: []
+  },
+
+  interviewer_notes: "Candidate initially used nested loop but corrected after hint. Good communication and problem-solving approach."
+};
+```
+
+**Step 2: Build simple dashboard component**
+```tsx
+// frontend/app/dashboard/[id]/page.tsx
+import { mockInterviewResult } from '@/lib/mockData';
+
+export default function RecruiterDashboard({ params }: { params: { id: string } }) {
+  const result = mockInterviewResult; // In production: fetch from API
+
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Interview Results</h1>
+
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div>Candidate: {result.candidate_name}</div>
+        <div>Problem: {result.problem}</div>
+        <div>Duration: {result.duration_minutes} min</div>
+        <div>Date: {new Date(result.timestamp).toLocaleString()}</div>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Scores</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <ScoreCard label="Correctness" score={result.scores.correctness} />
+          <ScoreCard label="Optimization" score={result.scores.optimization} />
+          <ScoreCard label="Code Quality" score={result.scores.code_quality} />
+          <ScoreCard label="Communication" score={result.scores.communication} />
+          <ScoreCard label="Problem Solving" score={result.scores.problem_solving} />
+          <ScoreCard label="Overall" score={result.scores.overall} highlight />
+        </div>
+        <div className="mt-4 text-lg">
+          Recommendation: <span className="font-bold text-green-600">{result.recommendation}</span>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Fairness Assessment</h2>
+        <div className="bg-green-50 p-4 rounded">
+          <div>Bias Detected: {result.fairness.bias_detected ? 'Yes ⚠️' : 'None ✅'}</div>
+          <div>Fairness Score: {result.fairness.fairness_score}/10</div>
+          <div>Hint Frequency: {result.fairness.hint_frequency}</div>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Interview Artifacts</h2>
+        <div className="space-x-4">
+          <button className="btn">Download Video</button>
+          <button className="btn">View Transcript</button>
+          <button className="btn">View Code</button>
+          <button className="btn">See Phoenix Trace</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**Step 3: Simple ScoreCard component**
+```tsx
+// frontend/components/ScoreCard.tsx
+export function ScoreCard({ label, score, highlight = false }: {
+  label: string;
+  score: number;
+  highlight?: boolean;
+}) {
+  const bgColor = highlight ? 'bg-blue-100' : 'bg-gray-100';
+
+  return (
+    <div className={`${bgColor} p-4 rounded text-center`}>
+      <div className="text-sm text-gray-600">{label}</div>
+      <div className="text-3xl font-bold">{score}/10</div>
+    </div>
+  );
+}
+```
+
+**What to tell judges if they ask:**
+- "This dashboard shows what recruiters would see in production."
+- "For the hackathon, we pre-loaded realistic data to save dev time."
+- "Agent 2 still runs and generates real scores—you can see them in the Phoenix trace dashboard."
+- "In production, this would poll the backend for updates. We focused our 24 hours on the AI interview experience instead."
+
+**Time investment:** ~1 hour (vs. 3-4 hours for real integration)
+
+---
+
+### 6. Arize Phoenix Tracing (Observability)
 
 **Setup:**
 ```python
@@ -561,9 +727,24 @@ alembic upgrade head
 - Verify traces appear in Phoenix UI
 
 **Hour 16-18:** Frontend (Next.js)
-- `app/interview/[id]/page.tsx`: Interview room (Monaco + LiveKit)
-- `app/dashboard/[id]/page.tsx`: Recruiter dashboard
-- `components/CodeEditor.tsx`, `components/AvatarVideo.tsx`
+- `app/interview/[id]/page.tsx`: Interview room (Monaco + LiveKit) - **FULLY FUNCTIONAL**
+  - LiveKit room integration
+  - Monaco editor with onChange → CODE_SNAPSHOT events
+  - "Run Code" and "Submit Solution" buttons
+  - Avatar video display
+- `app/dashboard/[id]/page.tsx`: Recruiter dashboard - **MOCKED (1 hour max)**
+  - Simple cards showing scores
+  - Hardcoded JSON in `lib/mockData.ts`:
+    ```typescript
+    export const mockInterviewResult = {
+      candidate: "John Doe",
+      problem: "Two Sum",
+      scores: { correctness: 9, optimization: 7, ... },
+      fairness: { bias_detected: false, ... }
+    }
+    ```
+  - Nice UI, but no real backend integration
+- `components/CodeEditor.tsx`, `components/AvatarVideo.tsx`, `components/ScoresDashboard.tsx`
 
 **Hour 18-20:** End-to-end testing + bug fixes
 - Run full interview from start to finish
@@ -613,15 +794,33 @@ async def test_full_interview_pipeline():
 ```
 
 ### Manual Testing Checklist
+
+**Candidate Interview Page (Must Work):**
 - [ ] LiveKit room creates successfully
 - [ ] Avatar video appears in interview room
 - [ ] Candidate can speak (transcription works)
 - [ ] Monaco editor sends CODE_SNAPSHOT every 1.5s
-- [ ] Agent 1 interrupts on logical errors
+- [ ] Agent 1 interrupts on logical errors via voice
 - [ ] "Run Code" button executes Python correctly
-- [ ] Interview completes → Dashboard shows scores
-- [ ] Phoenix dashboard shows traces in real-time
-- [ ] Fairness agent detects obvious bias (test with biased transcript)
+- [ ] "Submit Solution" button ends interview
+- [ ] Interview completion shows "Thank you" message
+
+**Backend & Agents (Must Work):**
+- [ ] Agent 1 runs and generates scores
+- [ ] Agent 2 runs post-interview (check Phoenix traces)
+- [ ] LangGraph orchestration works (Agent 1 → Agent 2 → END)
+
+**Recruiter Dashboard (Mock Data - Just Needs to Render):**
+- [ ] Dashboard page loads with mock scores
+- [ ] UI looks professional (cards, layout, colors)
+- [ ] Scores are visible and readable
+- [ ] Fairness report displays correctly
+
+**Arize Phoenix (Must Work):**
+- [ ] Phoenix server running at localhost:6006
+- [ ] Traces appear in real-time during interview
+- [ ] Agent 1 and Agent 2 spans visible
+- [ ] Token usage and latency captured
 
 ---
 
@@ -697,15 +896,17 @@ ROI: $198,650/month = $2.38M/year
 - Avatar: "Perfect! Can you explain the time complexity?"
 - Answer verbally: "O(n) time, O(n) space"
 
-**[3:00-3:30] Recruiter Dashboard**
-- Interview ends, transition to dashboard
-- Show scores:
+**[3:00-3:30] Recruiter Dashboard (Mocked)**
+- Interview ends on candidate page → Shows "Interview complete!"
+- **Switch browser tab** to `/dashboard/abc123` (pre-opened before demo)
+- Dashboard shows **MOCK DATA** (hardcoded scores):
   - Correctness: 9/10
   - Optimization: 7/10 (needed hint)
   - Communication: 8/10
   - Overall: 8.0/10 → STRONG HIRE
 - Show fairness report: "No bias detected"
-- Download buttons: [Video] [Transcript]
+- Download buttons: [Video] [Transcript] (non-functional, just UI)
+- **If judges ask:** "This shows what recruiters would see in production. For the demo, we pre-loaded realistic data to save dev time and focus on the interview AI and observability."
 
 **[3:30-4:15] Phoenix Dashboard (Arize Track)**
 - Switch to `localhost:6006`
@@ -790,11 +991,14 @@ When working on this project:
 
 1. **Read PRD first** - `/prd.md` is the source of truth. This file supplements it.
 2. **Prioritize demo** - Focus on what judges will see in 5 minutes, not perfect production code.
-3. **Cost-conscious** - Always think "How can we make this cheaper?" (e.g., use Haiku for Agent 2).
-4. **Test incrementally** - Build Agent 1 first, test in isolation, then add Agent 2.
-5. **Document trade-offs** - If cutting scope, explain why (e.g., "Skipping resume parsing to focus on interview quality").
-6. **Phoenix first** - Instrument early. Judges love seeing traces in real-time.
-7. **Avatar fallback** - If D-ID fails, use static image + waveform. Show concept, not perfection.
+3. **Mock the dashboard** - Recruiter dashboard uses hardcoded JSON. Don't build real-time updates or backend integration. Just make it look good.
+4. **Cost-conscious** - Always think "How can we make this cheaper?" (e.g., use Haiku for Agent 2).
+5. **Test incrementally** - Build Agent 1 first, test in isolation, then add Agent 2.
+6. **Document trade-offs** - If cutting scope, explain why (e.g., "Dashboard is mocked to focus on interview AI").
+7. **Phoenix first** - Instrument early. Judges love seeing traces in real-time.
+8. **Avatar fallback** - If D-ID fails, use static image + waveform. Show concept, not perfection.
+9. **Focus on interview page** - 80% of dev time should be on `/interview/[id]`, not dashboard.
+10. **Agent 2 still runs** - Even though dashboard is mocked, Agent 2 must run for real (judges will check Phoenix traces).
 
 ---
 

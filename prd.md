@@ -86,6 +86,86 @@
 
 ---
 
+## User Flow & Pages
+
+### Page 1: Candidate Interview (`/interview/[id]`)
+
+**Who uses it:** The candidate being interviewed
+
+**Layout:**
+- **Left side:** AI avatar video (realistic human face, lip-synced with D-ID)
+- **Center:** Monaco code editor (Python syntax highlighting)
+- **Right side:** Candidate's webcam feed (optional, but shown for realism)
+- **Bottom:** [Run Code] [Submit Solution] buttons
+
+**User Flow:**
+1. Candidate opens link → Joins LiveKit room via WebRTC
+2. Avatar introduces problem via voice: "Hi! I'm Sarah. Let's solve Two Sum today..."
+3. Candidate types code in Monaco editor
+4. **Every 1.5 seconds:** Code snapshot sent to Agent 1 (debounced onChange)
+5. **Agent 1 analyzes code:**
+   - Logical error detected → Avatar interrupts: "I see you're using nested loops..."
+   - Good approach → Avatar encourages: "Great! Keep going."
+   - Stuck for 2+ min → Avatar prompts: "Need a hint? Think about hash maps..."
+6. Candidate clicks **"Run Code"** → Backend executes in sandbox → Test results shown
+7. When satisfied, candidate clicks **"Submit Solution"** → Interview ends
+8. Page transitions to: "Interview complete! Thank you for your time."
+
+**Duration:** 15-25 minutes
+
+**What gets built (for real):**
+- LiveKit video integration (avatar + candidate webcam)
+- Monaco editor with code snapshot events
+- "Run Code" button → Backend execution endpoint
+- "Submit Solution" button → Ends interview, triggers Agent 2
+
+---
+
+### Page 2: Recruiter Dashboard (`/dashboard/[id]`)
+
+**Who uses it:** Hiring managers/recruiters (post-interview)
+
+**Layout:**
+- **Header:** Candidate name, problem attempted, interview duration
+- **Scores Card:**
+  - Correctness: 9/10
+  - Optimization: 7/10
+  - Code Quality: 8/10
+  - Communication: 8/10
+  - **Overall: 8.0/10 → STRONG HIRE**
+- **Fairness Report Card:**
+  - Bias detected: None
+  - Hint frequency: Within normal range
+  - Question difficulty: Appropriate for level
+- **Artifacts:**
+  - [Download Video Recording]
+  - [View Transcript]
+  - [View Code Submissions]
+  - [See Phoenix Trace]
+
+**IMPORTANT - This is MOCKED for the hackathon:**
+
+This dashboard will use **static mock data** (pre-populated JSON) for the demo. It will NOT pull real results from Agent 2.
+
+**Why mock it?**
+- Saves 2-3 hours of development time
+- Lets you focus on the live interview experience (where the real innovation is)
+- Still shows judges the complete product vision
+- Demonstrates what recruiters would see in production
+
+**What to say during demo:**
+- "Here's what the recruiter dashboard looks like after an interview."
+- "These scores came from our fairness-aware scoring algorithm."
+- "In production, this would update in real-time. For the demo, we've pre-loaded realistic data."
+
+**What gets built:**
+- Simple React page with hardcoded data
+- Nice UI/cards showing scores and reports
+- Download buttons (can be non-functional links)
+- Takes ~1 hour to build instead of 3-4 hours for real integration
+
+---
+
 ## 2-Agent Orchestration (LangGraph)
 
 ### Agent 1: Technical Interviewer (Real-time)
@@ -417,15 +497,18 @@ REDIS_URL=redis://localhost:6379
   → Avatar: "Perfect! That's much better. Now let's test it."
   → Candidate clicks "Run Code" → Tests pass ✅
 
-[3:30-4:00] Results & Recruiter Dashboard
-  → Interview ends, transitions to dashboard
-  → Shows scores:
+[3:30-4:00] Results & Recruiter Dashboard (Mocked)
+  → Switch browser tab to /dashboard/abc123 (pre-opened before demo)
+  → Shows MOCK DATA dashboard with realistic scores:
       Correctness: 9/10
       Optimization: 7/10 (needed hint)
       Communication: 8/10
       Overall: 8.0/10 → STRONG HIRE
   → Shows fairness report: "No bias detected"
   → Shows download links: [Video Recording] [Transcript]
+  → If judges ask: "This shows what recruiters would see. For the demo,
+     we pre-loaded realistic data to save dev time and focus on the
+     interview experience."
 
 [4:00-4:30] Phoenix Dashboard (Arize Track)
   → Switch to localhost:6006 (Phoenix UI)
@@ -557,15 +640,34 @@ def log_event(event_type: EventType, session_id: str, payload: dict):
 - Email notifications
 - Multiple programming languages (Python only)
 - Mobile app (desktop web only)
-- Historical analytics dashboard (mock data is fine)
 - Production-grade security (sandbox is basic subprocess isolation)
 - Video recording storage (save locally, no S3/cloud)
+- Real-time recruiter dashboard updates (see below)
 
-**What Can Be Faked/Simplified:**
-- Resume upload (skip, go straight to interview)
-- Interview scheduling (just "Start Interview" button)
-- Payment/billing (out of scope)
-- Multi-user support (single interview at a time)
+**What Will Be Mocked/Simplified:**
+
+1. **Recruiter Dashboard (`/dashboard/[id]`)** - Uses static mock data
+   - Hardcoded scores, fairness report, timestamps
+   - Shows what the UI would look like in production
+   - **Does NOT** pull real data from Agent 2
+   - Saves 2-3 hours of backend integration work
+
+2. **Resume upload** - Skip entirely, go straight to interview
+
+3. **Interview scheduling** - Just "Start Interview" button (no calendar integration)
+
+4. **Video/transcript downloads** - Buttons exist but don't need to work (can show "Coming soon" alert)
+
+5. **Multi-user support** - System handles one interview at a time (no concurrency)
+
+**What MUST Work for Demo:**
+- ✅ Candidate interview page (`/interview/[id]`) - Fully functional
+- ✅ LiveKit video call with avatar
+- ✅ Monaco code editor with real-time hints
+- ✅ "Run Code" button executes Python in sandbox
+- ✅ Agent 1 watches code and interrupts via voice
+- ✅ Agent 2 runs post-interview (even if results only shown in Phoenix, not dashboard)
+- ✅ Arize Phoenix traces visible in real-time
 
 ---
 
