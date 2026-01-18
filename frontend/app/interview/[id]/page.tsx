@@ -224,7 +224,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
         {/* Right Panel - Code Editor */}
         <div className="h-full flex flex-col">
-          <CodeEditor
+        <CodeEditor
+            sessionId={params.id}
             onCodeChange={() => {}}
             onRunCode={() => {}}
           />

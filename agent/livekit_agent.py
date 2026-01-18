@@ -188,7 +188,7 @@ async def entrypoint(ctx: JobContext):
 
     llm_plugin = openai.LLM(
         base_url="https://api.groq.com/openai/v1",
-        api_key="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",
+        api_key=settings.groq_api_key,
         model="meta-llama/llama-4-maverick-17b-128e-instruct",
     )
 

@@ -12,6 +12,7 @@ interface TestResult {
 }
 
 interface CodeEditorProps {
+  sessionId: string
   onCodeChange?: (code: string) => void
   onRunCode?: (code: string) => void
 }
@@ -25,10 +26,13 @@ const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
     pass
 `
 
-export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps) {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeEditorProps) {
   const [code, setCode] = useState(STARTER_CODE)
   const [testResults, setTestResults] = useState<TestResult[] | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -39,36 +43,60 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
 
   const handleRunCode = async () => {
     setIsRunning(true)
+    setError(null)
 
-    setTimeout(() => {
-      const mockResults: TestResult[] = [
-        {
-          case: 1,
-          passed: true,
-          input: '[2, 7, 11, 15], target = 9',
-          expected: '[0, 1]',
-          actual: '[0, 1]'
-        },
-        {
-          case: 2,
-          passed: true,
-          input: '[3, 2, 4], target = 6',
-          expected: '[1, 2]',
-          actual: '[1, 2]'
-        },
-        {
-          case: 3,
-          passed: false,
-          input: '[3, 3], target = 6',
-          expected: '[0, 1]',
-          actual: 'None'
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/interviews/${sessionId}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Transform backend response to TestResult format
+      const results: TestResult[] = []
+      const totalTests = data.total || 0
+      const passedCount = data.passed || 0
+      const details = data.details || []
+
+      // Add passed tests (we don't have individual details for passed tests)
+      for (let i = 1; i <= totalTests; i++) {
+        const failedDetail = details.find((d: { case: number }) => d.case === i)
+        if (failedDetail) {
+          results.push({
+            case: i,
+            passed: false,
+            input: JSON.stringify(failedDetail.input),
+            expected: JSON.stringify(failedDetail.expected),
+            actual: failedDetail.error || JSON.stringify(failedDetail.actual),
+          })
+        } else {
+          results.push({
+            case: i,
+            passed: true,
+            input: `Test case ${i}`,
+            expected: 'Passed',
+          })
         }
-      ]
+      }
 
-      setTestResults(mockResults)
-      setIsRunning(false)
+      // Handle stderr/execution errors
+      if (data.stderr) {
+        setError(data.stderr)
+      }
+
+      setTestResults(results)
       onRunCode?.(code)
-    }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to run code')
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   const passedTests = testResults?.filter(r => r.passed).length ?? 0

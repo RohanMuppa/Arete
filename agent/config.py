@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     
+    # Groq API (for fast inference)
+    groq_api_key: str = ""
+    
     # Models (via OpenRouter)
     interviewer_model: str = "@preset/llama-groq-3-3-70b"
     fairness_model: str = "google/gemini-3-pro-preview"
@@ -33,7 +36,7 @@ class Settings(BaseSettings):
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
     
-    # ElevenLabs (TTS)
+.    # ElevenLabs (TTS)
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
     
