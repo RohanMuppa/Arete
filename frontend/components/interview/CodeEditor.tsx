@@ -1,7 +1,7 @@
 'use client'
 
 import { Editor } from '@monaco-editor/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface TestResult {
   case: number
@@ -12,9 +12,9 @@ interface TestResult {
 }
 
 interface CodeEditorProps {
-  sessionId: string
+  initialCode?: string
   onCodeChange?: (code: string) => void
-  onRunCode?: (code: string) => void
+  onRunCode?: (code: string) => Promise<{ results: Array<{ case: number; passed: boolean; input: string; expected: string; actual?: string }>; all_passed: boolean; execution_time_ms: number } | void>
 }
 
 const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
@@ -26,13 +26,19 @@ const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
     pass
 `
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeEditorProps) {
-  const [code, setCode] = useState(STARTER_CODE)
+export default function CodeEditor({ initialCode, onCodeChange, onRunCode }: CodeEditorProps) {
+  const [code, setCode] = useState(initialCode || STARTER_CODE)
   const [testResults, setTestResults] = useState<TestResult[] | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Expose current code globally for AI to access
+  useEffect(() => {
+    (window as any).__areteCurrentCode = code
+    return () => {
+      delete (window as any).__areteCurrentCode
+    }
+  }, [code])
 
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -42,56 +48,17 @@ export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeE
   }
 
   const handleRunCode = async () => {
+    if (!onRunCode) return
+
     setIsRunning(true)
     setError(null)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/interviews/${sessionId}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      })
+      const result = await onRunCode(code)
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`)
+      if (result && result.results) {
+        setTestResults(result.results)
       }
-
-      const data = await response.json()
-
-      // Transform backend response to TestResult format
-      const results: TestResult[] = []
-      const totalTests = data.total || 0
-      const passedCount = data.passed || 0
-      const details = data.details || []
-
-      // Add passed tests (we don't have individual details for passed tests)
-      for (let i = 1; i <= totalTests; i++) {
-        const failedDetail = details.find((d: { case: number }) => d.case === i)
-        if (failedDetail) {
-          results.push({
-            case: i,
-            passed: false,
-            input: JSON.stringify(failedDetail.input),
-            expected: JSON.stringify(failedDetail.expected),
-            actual: failedDetail.error || JSON.stringify(failedDetail.actual),
-          })
-        } else {
-          results.push({
-            case: i,
-            passed: true,
-            input: `Test case ${i}`,
-            expected: 'Passed',
-          })
-        }
-      }
-
-      // Handle stderr/execution errors
-      if (data.stderr) {
-        setError(data.stderr)
-      }
-
-      setTestResults(results)
-      onRunCode?.(code)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to run code')
     } finally {
@@ -103,7 +70,7 @@ export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeE
   const totalTests = testResults?.length ?? 0
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full min-h-0 bg-[#1e1e1e]">
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3c3c3c]">
         <div className="flex items-center gap-3">
@@ -118,8 +85,8 @@ export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeE
         >
           {isRunning ? (
             <>
-              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Running...
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Running...</span>
             </>
           ) : (
             <>
@@ -163,7 +130,6 @@ export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeE
             autoSurround: 'never',
             formatOnType: false,
             formatOnPaste: false,
-            suggest: { enabled: false },
             inlineSuggest: { enabled: false },
             hover: { enabled: false },
             codeLens: false,
@@ -174,14 +140,20 @@ export default function CodeEditor({ sessionId, onCodeChange, onRunCode }: CodeE
         />
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="px-4 py-2 bg-[#f14c4c]/10 border-b border-[#f14c4c]/20 text-[#f14c4c] text-xs font-mono">
+          Error: {error}
+        </div>
+      )}
+
       {/* Test Results Panel */}
       {testResults && (
         <div className="flex-shrink-0 border-t border-[#3c3c3c] bg-[#1e1e1e] max-h-48 overflow-y-auto">
           <div className="px-4 py-2 border-b border-[#3c3c3c] flex items-center justify-between">
             <span className="text-sm text-[#cccccc]">Test Results</span>
-            <span className={`text-sm font-mono ${
-              passedTests === totalTests ? 'text-[#4ec9b0]' : 'text-[#ce9178]'
-            }`}>
+            <span className={`text-sm font-mono ${passedTests === totalTests ? 'text-[#4ec9b0]' : 'text-[#ce9178]'
+              }`}>
               {passedTests}/{totalTests} passed
             </span>
           </div>

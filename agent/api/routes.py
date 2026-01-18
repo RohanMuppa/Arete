@@ -111,78 +111,35 @@ class TokenResponse(BaseModel):
 # Problem Bank (Demo data)
 # =============================================================================
 
-PROBLEM_BANK: dict[str, ProblemInfo] = {
-    "two_sum": ProblemInfo(
-        id="two_sum",
-        title="Two Sum",
-        difficulty="Easy",
-        prompt="""Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
+# =============================================================================
+# Problem Bank
+# =============================================================================
 
-You may assume that each input would have exactly one solution, and you may not use the same element twice.
+def load_problems() -> dict[str, ProblemInfo]:
+    """Load problems from JSON file."""
+    try:
+        json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "problems.json")
+        with open(json_path, "r") as f:
+            problems_data = json.load(f)
+        
+        bank = {}
+        for p in problems_data:
+            bank[p["id"]] = ProblemInfo(
+                id=p["id"],
+                title=p["title"],
+                difficulty=p["difficulty"],
+                prompt=p["prompt"],
+                starter_code=p["starter_code"],
+                optimal_approach=p["optimal_approach"],
+                constraints=p["constraints"],
+                test_cases=p["test_cases"]
+            )
+        return bank
+    except Exception as e:
+        print(f"Error loading problems: {e}")
+        return {}
 
-You can return the answer in any order.""",
-        starter_code="""def twoSum(nums: list[int], target: int) -> list[int]:
-    # Your code here
-    pass""",
-        optimal_approach="Use a hash map to store seen values and their indices. O(n) time, O(n) space.",
-        constraints=[
-            "2 <= nums.length <= 10^4",
-            "-10^9 <= nums[i] <= 10^9",
-            "-10^9 <= target <= 10^9",
-            "Only one valid answer exists."
-        ],
-        test_cases=[
-            {"input": {"nums": [2, 7, 11, 15], "target": 9}, "expected": [0, 1]},
-            {"input": {"nums": [3, 2, 4], "target": 6}, "expected": [1, 2]},
-            {"input": {"nums": [3, 3], "target": 6}, "expected": [0, 1]},
-        ]
-    ),
-    "merge_intervals": ProblemInfo(
-        id="merge_intervals",
-        title="Merge Intervals",
-        difficulty="Medium",
-        prompt="""Given an array of intervals where intervals[i] = [start, end], merge all overlapping intervals and return an array of non-overlapping intervals.""",
-        starter_code="""def merge(intervals: list[list[int]]) -> list[list[int]]:
-    # Your code here
-    pass""",
-        optimal_approach="Sort by start time, then merge overlaps. O(n log n) time.",
-        constraints=[
-            "1 <= intervals.length <= 10^4",
-            "intervals[i].length == 2",
-            "0 <= start <= end <= 10^4"
-        ],
-        test_cases=[
-            {"input": {"intervals": [[1,3],[2,6],[8,10],[15,18]]}, "expected": [[1,6],[8,10],[15,18]]},
-            {"input": {"intervals": [[1,4],[4,5]]}, "expected": [[1,5]]},
-            {"input": {"intervals": [[1,4],[2,3]]}, "expected": [[1,4]]},
-        ]
-    ),
-    "valid_parentheses": ProblemInfo(
-        id="valid_parentheses",
-        title="Valid Parentheses",
-        difficulty="Easy",
-        prompt="""Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.
-
-An input string is valid if:
-1. Open brackets must be closed by the same type of brackets.
-2. Open brackets must be closed in the correct order.
-3. Every close bracket has a corresponding open bracket of the same type.""",
-        starter_code="""def isValid(s: str) -> bool:
-    # Your code here
-    pass""",
-        optimal_approach="Use a stack. Push open brackets, pop and match for close brackets. O(n) time.",
-        constraints=[
-            "1 <= s.length <= 10^4",
-            "s consists of parentheses only '()[]{}'"
-        ],
-        test_cases=[
-            {"input": {"s": "()"}, "expected": True},
-            {"input": {"s": "()[]{}"}, "expected": True},
-            {"input": {"s": "(]"}, "expected": False},
-            {"input": {"s": "([)]"}, "expected": False},
-        ]
-    ),
-}
+PROBLEM_BANK: dict[str, ProblemInfo] = load_problems()
 
 
 # =============================================================================
@@ -460,6 +417,90 @@ async def list_problems() -> list[dict[str, str]]:
     ]
 
 
+class ChatRequest(BaseModel):
+    """Chat message from candidate."""
+    message: str
+    code: str | None = None
+
+
+class ChatResponse(BaseModel):
+    """AI response to candidate."""
+    response: str
+
+
+@router.post("/interviews/{session_id}/chat", response_model=ChatResponse)
+async def chat_with_interviewer(session_id: str, request: ChatRequest) -> ChatResponse:
+    """Send a message to the AI interviewer and get a response."""
+    import anthropic
+
+    state = _sessions.get(session_id)
+    if not state:
+        # For demo mode, create a temporary context
+        problem = PROBLEM_BANK.get("two_sum")
+        state = {
+            "problem": problem,
+            "candidate_name": "Candidate",
+            "conversation_history": [],
+        }
+
+    problem = state.get("problem", PROBLEM_BANK.get("two_sum"))
+
+    # Build context for AI
+    system_prompt = f"""You are Sarah, a friendly and encouraging technical interviewer at a top tech company.
+You're conducting a coding interview for the "{problem['title']}" problem ({problem['difficulty']}).
+
+Problem: {problem['prompt']}
+
+Your role:
+- Be conversational, warm, and supportive
+- Give hints when asked, but don't give away the solution
+- Encourage the candidate when they're on the right track
+- Ask clarifying questions about their approach
+- Keep responses concise (2-3 sentences max)
+- If they share code, comment on their approach
+
+Current code the candidate is working on:
+{request.code or "No code yet"}
+"""
+
+    try:
+        settings = get_settings()
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        # Get conversation history
+        messages = []
+        for msg in state.get("conversation_history", [])[-6:]:  # Last 6 messages for context
+            messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+
+        # Add current message
+        messages.append({"role": "user", "content": request.message})
+
+        response = client.messages.create(
+            model="claude-3-5-haiku-20241022",  # Fast model for chat
+            max_tokens=150,
+            system=system_prompt,
+            messages=messages
+        )
+
+        ai_response = response.content[0].text
+
+        # Update conversation history
+        if session_id in _sessions:
+            _sessions[session_id].setdefault("conversation_history", [])
+            _sessions[session_id]["conversation_history"].append({"role": "user", "content": request.message})
+            _sessions[session_id]["conversation_history"].append({"role": "assistant", "content": ai_response})
+
+        return ChatResponse(response=ai_response)
+
+    except Exception as e:
+        print(f"Chat error: {e}")
+        # Fallback response if API fails
+        return ChatResponse(response="I'm having trouble connecting. Could you repeat that?")
+
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -542,7 +583,7 @@ def _execute_code(code: str, problem: ProblemInfo) -> dict[str, Any]:
     q = multiprocessing.Queue()
     p = multiprocessing.Process(target=_worker_entry, args=(code, problem["test_cases"], q))
     p.start()
-    p.join(timeout=2.0) # 2 second timeout
+    p.join(timeout=5.0) # 5 second timeout
     
     if p.is_alive():
         p.terminate()

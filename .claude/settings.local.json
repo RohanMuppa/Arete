@@ -2,7 +2,20 @@
   "permissions": {
     "allow": [
       "Bash(git -C /Users/rohanmuppa/Documents/nexhacks-26 status)",
-      "Bash(git -C /Users/rohanmuppa/Documents/nexhacks-26 config --local -l)"
+      "Bash(git -C /Users/rohanmuppa/Documents/nexhacks-26 config --local -l)",
+      "Bash(npx playwright test:*)",
+      "Bash(git checkout:*)",
+      "Bash(curl:*)",
+      "Bash(git show:*)",
+      "Bash(\"app/interview/[id]/page.tsx\")",
+      "Bash(kill:*)",
+      "Bash(lsof:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Skill(ralph-loop:cancel-ralph)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run build:*)"
     ]
   }
 }

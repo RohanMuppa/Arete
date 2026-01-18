@@ -179,17 +179,12 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect()
     
     # Config for OpenRouter (using OpenAI plugin)
-    #llm_plugin = openai.LLM(
-    #    base_url=settings.openrouter_base_url,
-    #    api_key=settings.openrouter_api_key,
-    #    model=settings.interviewer_model,
-    #)
 
 
     llm_plugin = openai.LLM(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=settings.groq_api_key,
-        model="meta-llama/llama-4-maverick-17b-128e-instruct",
+        base_url=settings.openrouter_base_url,
+        api_key=settings.openrouter_api_key,
+        model=settings.interviewer_model,
     )
 
     # Config for STT (Deepgram)
