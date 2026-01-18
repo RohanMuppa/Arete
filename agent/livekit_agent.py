@@ -52,16 +52,21 @@ Your responsibilities:
 1. Present problems clearly.
 3. Keep responses extremely short (1-2 sentences max).
 4. ALWAYS end your turn with a DIRECT QUESTION. Never just make a statement and stop.
-5. NEVER write code for the candidate or give the solution.
-6. DO NOT suggest specific data structures (like "hash maps") or algorithms unless the candidate mentions them first.
-7. If they are wrong, ask "Why do you think that work?" instead of correcting them. Be a tough interviewer.
+5. NEVER ECHO BACK what the user said. Bad: "So you want to use a hash map, that's a good idea." Good: "How will you use it?"
+6. NEVER write code for the candidate or give the solution.
+7. DO NOT suggest specific data structures (like "hash maps") or algorithms unless the candidate mentions them first.
+8. If the candidate mentions a correct data structure (e.g., "hash map"), DO NOT explain how to use it. Ask "How exactly will you use that?" to make them explain it.
+9. If they are wrong, ask "Why do you think that work?" instead of correcting them. Be a tough interviewer.
+10. When the candidate has successfully solved the problem (passed all tests) OR asks to leave, use the `end_interview` tool.
 
 Current problem: {problem_title}
 Difficulty: {difficulty}
 Problem description: {problem_prompt}
+IMPORTANT CONSTRAINTS (must mention these when presenting the problem):
+{constraints}
 Optimal approach: {optimal_approach}
 
-Start by introducing yourself and presenting the problem. Keep responses conversational and concise (1 sentence).
+Keep responses conversational and concise (1 sentence).
 Remember: You're having a voice conversation, so be natural and speak like a person.
 
 CRITICAL PRONUNCIATION GUIDE:
@@ -85,6 +90,7 @@ class InterviewerAgent(Agent):
                 problem_title=problem["title"],
                 difficulty=problem["difficulty"],
                 problem_prompt=problem["prompt"],
+                constraints="\n".join(f"- {c}" for c in problem.get("constraints", [])),
                 optimal_approach=problem["optimal_approach"],
             ) # + "\n\nYou have access to the candidate's code. Use the `run_tests` tool to verify their solution when they ask or when they think they are done.\nIf the candidate says they are finished or wants to end the interview, use the `end_interview` tool."
         )
@@ -266,8 +272,12 @@ async def entrypoint(ctx: JobContext):
             logger.info(f"Bias Detected: {result['bias_detected']}")
             logger.info(f"Fairness Score: {result['fairness_score']}/10")
             logger.info(f"Recommendation: {result['recommendation']}")
+            logger.info(f"Reasoning: {result['reasoning']}")
             logger.info(f"Flags: {result['flags']}")
             logger.info("==========================================")
+            
+            # Add fairness result to state
+            state["fairness_result"] = dict(result)
             
             # Save report
             filename = f"session_{state['session_id']}.json"
@@ -282,14 +292,14 @@ async def entrypoint(ctx: JobContext):
     
     # Start the session with our custom interviewer agent
     async def initiate_chat():
-        await asyncio.sleep(1.5) # Wait for connection stabilization
+        await asyncio.sleep(2.0) # Wait for session to fully stabilize
         logger.info("Triggering initial greeting...")
         try:
             # Trigger the agent to speak by simulating a system prompt
             # Explicitly forbid tool calls to prevent hallucinations like `introduce_and_present_problem`
-            session.run(user_input="[System Event: User Connected] Please speak your greeting now. Introduce yourself as Sarah. Ask how the candidate is doing. (Reply with text only, NO function calls).")
+            await session.say("Hi, I'm Sarah, and I'll be conducting your interview today. How are you doing?", allow_interruptions=True)
         except Exception as e:
-            logger.warning(f"Could not initiate chat (maybe user spoke first?): {e}")
+            logger.warning(f"Could not initiate chat: {e}")
 
     asyncio.create_task(initiate_chat())
 
