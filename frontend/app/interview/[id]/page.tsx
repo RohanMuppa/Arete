@@ -15,7 +15,7 @@ import {
 
 // Fallback problem when backend isn't available
 const FALLBACK_PROBLEM = {
-  id: 'two-sum',
+  id: 'two_sum',
   title: 'Two Sum',
   difficulty: 'Easy',
   description: `Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
@@ -65,11 +65,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   // API state
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [problem, setProblem] = useState(FALLBACK_PROBLEM)
+  const [problem, setProblem] = useState(DEFAULT_PROBLEM)
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hintsUsed, setHintsUsed] = useState(0)
-  const [currentCode, setCurrentCode] = useState(FALLBACK_PROBLEM.starter_code)
+  const [currentCode, setCurrentCode] = useState(DEFAULT_PROBLEM.starter_code)
 
   // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null)
@@ -146,21 +146,21 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       // Try to start a real interview session
       const response = await apiClient.startInterview({
         candidate_name: candidateName.trim(),
-        problem_id: params.id === 'demo' ? 'two_sum' : params.id,
+        problem_id: params.id === 'demo' || params.id === 'two-sum' ? 'two_sum' : params.id,
       })
 
       setSessionId(response.session_id)
       // Backend returns flat fields, use them with fallback problem for missing fields
       setProblem({
-        id: params.id === 'demo' ? 'two_sum' : params.id,
-        title: (response as any).problem_title || FALLBACK_PROBLEM.title,
-        difficulty: FALLBACK_PROBLEM.difficulty,
-        description: FALLBACK_PROBLEM.description,
-        examples: FALLBACK_PROBLEM.examples,
-        constraints: FALLBACK_PROBLEM.constraints,
-        starter_code: (response as any).starter_code || FALLBACK_PROBLEM.starter_code,
+        id: params.id,
+        title: (response as any).problem_title || DEFAULT_PROBLEM.title,
+        difficulty: DEFAULT_PROBLEM.difficulty,
+        description: DEFAULT_PROBLEM.description,
+        examples: DEFAULT_PROBLEM.examples,
+        constraints: DEFAULT_PROBLEM.constraints,
+        starter_code: (response as any).starter_code || DEFAULT_PROBLEM.starter_code,
       })
-      setCurrentCode((response as any).starter_code || FALLBACK_PROBLEM.starter_code)
+      setCurrentCode((response as any).starter_code || DEFAULT_PROBLEM.starter_code)
       setIsConnected(true)
       setShowSetup(false)  // Transition to interview view
       setIsLoading(false)
@@ -300,7 +300,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
                 <div className="text-sm text-[var(--text-secondary)]">
-                  You will solve <span className="font-medium">{FALLBACK_PROBLEM.title}</span> ({FALLBACK_PROBLEM.difficulty}) in a simulated Google-style technical interview.
+                  You will solve <span className="font-medium">{DEFAULT_PROBLEM.title}</span> ({DEFAULT_PROBLEM.difficulty}) in a simulated Google-style technical interview.
                 </div>
               </div>
 
