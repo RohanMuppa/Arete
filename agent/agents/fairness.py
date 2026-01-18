@@ -59,7 +59,7 @@ BIAS_DETECTED: [true|false]
 FAIRNESS_SCORE: [0.0-10.0]
 FLAGS: [comma-separated list of issues, or "none"]
 SCORE_ADJUSTMENT: [If scores need adjustment, explain. Otherwise "none needed"]
-RECOMMENDATION: [STRONG HIRE|HIRE|LEAN NO HIRE|NO HIRE]
+RECOMMENDATION: [PASS|FAIL]
 CONFIDENCE: [0.0-1.0]
 REASONING: [Brief explanation of your analysis]"""
 

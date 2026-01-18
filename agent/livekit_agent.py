@@ -10,7 +10,7 @@ Run with:
 
 import asyncio
 import logging
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Annotated
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -30,8 +30,12 @@ from .events import log_event
 from .api.routes import PROBLEM_BANK, _execute_code
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("arete-agent")
 
 
 # Interview system prompt for the LLM
@@ -39,24 +43,37 @@ INTERVIEWER_INSTRUCTIONS = """You are Sarah, an experienced technical interviewe
 You're conducting a live voice coding interview for a software engineering position.
 
 Your personality:
-- Warm and encouraging, but professional
-- Patient with candidates who are struggling
-- Give hints that guide without giving away solutions
-- Celebrate good approaches and clever solutions
+- Professional and concise.
+- Passive observer: Let the candidate drive the session.
+- Do NOT interrupt with advice unless they are completely stuck or ask for help.
+- Do NOT explain concepts unless asked.
 
 Your responsibilities:
-1. Present problems clearly and answer clarification questions
-2. Give hints when the candidate is stuck
-3. Encourage good approaches to boost confidence
-4. Score their final solution fairly
+1. Present problems clearly.
+3. Keep responses extremely short (1-2 sentences max).
+4. ALWAYS end your turn with a DIRECT QUESTION. Never just make a statement and stop.
+5. NEVER write code for the candidate or give the solution.
+6. DO NOT suggest specific data structures (like "hash maps") or algorithms unless the candidate mentions them first.
+7. If they are wrong, ask "Why do you think that work?" instead of correcting them. Be a tough interviewer.
 
 Current problem: {problem_title}
 Difficulty: {difficulty}
 Problem description: {problem_prompt}
 Optimal approach: {optimal_approach}
 
-Start by introducing yourself and presenting the problem. Keep responses conversational and concise (1-3 sentences).
-Remember: You're having a voice conversation, so be natural and speak like a person."""
+Start by introducing yourself and presenting the problem. Keep responses conversational and concise (1 sentence).
+Remember: You're having a voice conversation, so be natural and speak like a person.
+
+CRITICAL PRONUNCIATION GUIDE:
+- Strictly use English characters only.
+- DO NOT use special characters or code syntax (e.g., `[]`, `{{}}`, `=`, `()`, `->`, `_`) in your speech text.
+- The TTS engine cannot pronounce code symbols correctly.
+- Instead of saying "nums = [1, 2]", say "the nums list containing one and two".
+- Instead of "return [i, j]", say "return a list with i and j".
+- Speak completely naturally.
+
+ALWAYS end with a clear question or affirmation to invite the candidate to speak.
+"""
 
 
 class InterviewerAgent(Agent):
@@ -69,16 +86,16 @@ class InterviewerAgent(Agent):
                 difficulty=problem["difficulty"],
                 problem_prompt=problem["prompt"],
                 optimal_approach=problem["optimal_approach"],
-            ) + "\n\nYou have access to the candidate's code. Use the `run_tests` tool to verify their solution when they ask or when they think they are done.\nIf the candidate says they are finished or wants to end the interview, use the `end_interview` tool."
+            ) # + "\n\nYou have access to the candidate's code. Use the `run_tests` tool to verify their solution when they ask or when they think they are done.\nIf the candidate says they are finished or wants to end the interview, use the `end_interview` tool."
         )
         self.problem = problem
         self.state = state
         self.on_disconnect = on_disconnect
     
     @llm.function_tool(description="End the interview session.")
-    async def end_interview(self):
+    async def end_interview(self, reason: Annotated[str, "The reason for ending the interview"] = "completed"):
         """Ends the interview and disconnects the session."""
-        logger.info("Agent initiating disconnect sequence...")
+        logger.info(f"Agent initiating disconnect sequence (Reason: {reason})...")
         # Schedule disconnect with delay to allow TTS to finish
         asyncio.create_task(self._disconnect_later())
         return "I will end the interview now. Goodbye!"
@@ -92,22 +109,42 @@ class InterviewerAgent(Agent):
             await self.on_disconnect()
 
     @llm.function_tool(description="Run the tests on the candidate's current code solution")
-    def run_tests(self):
+    async def run_tests(self, trigger: Annotated[str, "What triggered this test run"] = "manual"):
         """Executes the candidate's code against the problem's test cases."""
-        logger.info("Running tests on candidate code...")
+        logger.info(f"Running tests on candidate code (Trigger: {trigger})...")
         code = self.state.get("code_snapshot", "")
         if not code:
             return "No code found in the editor."
         try:
-            results = _execute_code(code, self.problem)
-            return json.dumps(results)
+            # Run in executor to avoid blocking the event loop
+            loop = asyncio.get_running_loop()
+            results = await loop.run_in_executor(None, _execute_code, code, self.problem)
+            
+            # Format as natural language for the LLM to read/summarize
+            passed = results["passed"]
+            total = results["total"]
+            if passed == total:
+                return f"All {total} tests passed! Excellent work."
+            
+            details = []
+            for d in results["details"]:
+                if "error" in d:
+                    details.append(f"Case {d['case']}: Error - {d['error']}")
+                else:
+                    details.append(f"Case {d['case']}: Expected {d['expected']}, but got {d['actual']}")
+            
+            failure_summary = ". ".join(details[:2]) # Limit to first 2 failures
+            return f"Tests executed. {passed} passed, {results['failed']} failed out of {total}. Failures: {failure_summary}"
         except Exception as e:
             return f"Error executing code: {e}"
 
 
 def prewarm(proc: JobProcess):
     """Prewarm resources for faster startup."""
-    proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["vad"] = silero.VAD.load(
+        min_speech_duration=0.1,  # Def: 0.05
+        min_silence_duration=0.4, # Def: 0.55 (Decrease makes it snappier)
+    )
 
 
 async def entrypoint(ctx: JobContext):
@@ -136,10 +173,17 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect()
     
     # Config for OpenRouter (using OpenAI plugin)
+    #llm_plugin = openai.LLM(
+    #    base_url=settings.openrouter_base_url,
+    #    api_key=settings.openrouter_api_key,
+    #    model=settings.interviewer_model,
+    #)
+
+
     llm_plugin = openai.LLM(
-        base_url=settings.openrouter_base_url,
-        api_key=settings.openrouter_api_key,
-        model=settings.interviewer_model,
+        base_url="https://api.groq.com/openai/v1",
+        api_key="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",
+        model="meta-llama/llama-4-maverick-17b-128e-instruct",
     )
 
     # Config for STT (Deepgram)
@@ -152,6 +196,11 @@ async def entrypoint(ctx: JobContext):
     tts_plugin = elevenlabs.TTS(
         api_key=settings.elevenlabs_api_key or None,
         voice_id=settings.elevenlabs_voice_id or "21m00Tcm4TlvDq8ikWAM",  # Defaults to Rachel
+        voice_settings=elevenlabs.VoiceSettings(
+            stability=0.5, # Default usually 0.5
+            similarity_boost=0.75, # Default usually 0.75
+            speed=0.88, # Make it slower (0.8-1.2 range)
+        )
     )
     
     # Initialize AgentSession with Plugins
@@ -232,6 +281,18 @@ async def entrypoint(ctx: JobContext):
     # -----------------------------------
     
     # Start the session with our custom interviewer agent
+    async def initiate_chat():
+        await asyncio.sleep(1.5) # Wait for connection stabilization
+        logger.info("Triggering initial greeting...")
+        try:
+            # Trigger the agent to speak by simulating a system prompt
+            # Explicitly forbid tool calls to prevent hallucinations like `introduce_and_present_problem`
+            session.run(user_input="[System Event: User Connected] Please speak your greeting now. Introduce yourself as Sarah. Ask how the candidate is doing. (Reply with text only, NO function calls).")
+        except Exception as e:
+            logger.warning(f"Could not initiate chat (maybe user spoke first?): {e}")
+
+    asyncio.create_task(initiate_chat())
+
     await session.start(
         agent=InterviewerAgent(problem, state, on_disconnect=lambda: ctx.room.disconnect()),
         room=ctx.room,

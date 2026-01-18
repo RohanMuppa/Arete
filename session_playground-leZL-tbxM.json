@@ -1,0 +1,82 @@
+{
+  "session_id": "playground-leZL-tbxM",
+  "candidate_name": "Candidate",
+  "started_at": "2026-01-17T23:00:01.232917",
+  "ended_at": "2026-01-17T23:00:07.833324",
+  "problem": {
+    "id": "two_sum",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "prompt": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.",
+    "starter_code": "def twoSum(nums: list[int], target: int) -> list[int]:\n    # Your code here\n    pass",
+    "optimal_approach": "Use a hash map to store seen values and their indices. O(n) time, O(n) space.",
+    "constraints": [
+      "2 <= nums.length <= 10^4",
+      "-10^9 <= nums[i] <= 10^9",
+      "-10^9 <= target <= 10^9",
+      "Only one valid answer exists."
+    ],
+    "test_cases": [
+      {
+        "input": {
+          "nums": [
+            2,
+            7,
+            11,
+            15
+          ],
+          "target": 9
+        },
+        "expected": [
+          0,
+          1
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            3,
+            2,
+            4
+          ],
+          "target": 6
+        },
+        "expected": [
+          1,
+          2
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            3,
+            3
+          ],
+          "target": 6
+        },
+        "expected": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "code_snapshot": "def twoSum(nums: list[int], target: int) -> list[int]:\n    # Your code here\n    pass",
+  "code_history": [],
+  "last_code_change_at": null,
+  "conversation_history": [
+    {
+      "role": "user",
+      "content": "[System Event: User Connected] Please speak your greeting now. Introduce yourself as Sarah. Ask how the candidate is doing. (Reply with text only, NO function calls)."
+    }
+  ],
+  "code_submissions": [],
+  "current_analysis": null,
+  "hints_given": 0,
+  "encouragements_given": 0,
+  "interviewer_notes": null,
+  "raw_scores": null,
+  "fairness_result": null,
+  "final_recommendation": null,
+  "interview_complete": false
+}

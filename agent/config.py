@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     
     # Models (via OpenRouter)
-    interviewer_model: str = "anthropic/claude-3.5-sonnet"
+    interviewer_model: str = "@preset/llama-groq-3-3-70b"
     fairness_model: str = "google/gemini-3-pro-preview"
     
     # LiveKit (Video + Voice)
