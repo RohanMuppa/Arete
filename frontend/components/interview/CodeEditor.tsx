@@ -21,7 +21,7 @@ interface TestResult {
 interface CodeEditorProps {
   initialCode?: string
   onCodeChange?: (code: string) => void
-  onRunCode?: (code: string) => Promise<{ results: Array<{ case: number; passed: boolean; input: string; expected: string; actual?: string }>; all_passed: boolean; execution_time_ms: number } | void>
+  onRunCode?: (code: string) => Promise<{ details: Array<TestResult>; passed: number; failed: number; total: number; stderr?: string } | void>
 }
 
 const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
@@ -63,8 +63,11 @@ export default function CodeEditor({ initialCode, onCodeChange, onRunCode }: Cod
     try {
       const result = await onRunCode(code)
 
-      if (result && result.results) {
-        setTestResults(result.results)
+      if (result && result.details) {
+        setTestResults(result.details)
+        if (result.stderr) {
+          setError(result.stderr)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to run code')
@@ -75,6 +78,11 @@ export default function CodeEditor({ initialCode, onCodeChange, onRunCode }: Cod
 
   const passedTests = testResults?.filter(r => r.passed).length ?? 0
   const totalTests = testResults?.length ?? 0
+
+  const formatValue = (val: any) => {
+    if (typeof val === 'object') return JSON.stringify(val)
+    return String(val)
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#1e1e1e]">
@@ -175,11 +183,11 @@ export default function CodeEditor({ initialCode, onCodeChange, onRunCode }: Cod
                   <span className="text-sm text-[#cccccc]">Test {result.case}</span>
                 </div>
                 <div className="text-xs text-[#6b6b6b] font-mono space-y-0.5">
-                  <div>Input: {result.input}</div>
+                  <div>Input: {formatValue(result.input)}</div>
                   <div className="flex gap-4">
-                    <span>Expected: {result.expected}</span>
-                    {!result.passed && result.actual && (
-                      <span className="text-[#f14c4c]">Got: {result.actual}</span>
+                    <span>Expected: {formatValue(result.expected)}</span>
+                    {!result.passed && result.actual !== undefined && (
+                      <span className="text-[#f14c4c]">Got: {formatValue(result.actual)}</span>
                     )}
                   </div>
                 </div>

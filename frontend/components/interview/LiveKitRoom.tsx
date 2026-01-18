@@ -11,7 +11,7 @@ import {
   VideoTrack,
   useConnectionState,
 } from '@livekit/components-react'
-import { Track, RoomEvent, ConnectionState } from 'livekit-client'
+import { Track, RoomEvent, ConnectionState, RemoteTrackPublication } from 'livekit-client'
 import AnimatedAvatar from './AnimatedAvatar'
 import DIDAvatar from './DIDAvatar'
 
@@ -180,14 +180,67 @@ function InterviewRoomContent({
   const [isCameraOff, setIsCameraOff] = useState(false)
 
   // Get all audio tracks from remote participants (AI agent)
-  const audioTracks = useTracks([Track.Source.Microphone], { onlySubscribed: true })
+  // Include both Microphone and Unknown sources - LiveKit agents publish TTS as Unknown source
+  // Use onlySubscribed: false to get all tracks, then subscribe to them
+  const audioTracks = useTracks([Track.Source.Microphone, Track.Source.Unknown], { onlySubscribed: false })
   const remoteAudioTracks = audioTracks.filter(
     track => track.participant.identity !== localParticipant?.identity
   )
 
+  // Explicitly subscribe to remote audio tracks when they appear
+  useEffect(() => {
+    if (!room) return
+
+    const subscribeToAudio = () => {
+      console.log('🔊 Checking remote participants for audio tracks...')
+      room.remoteParticipants.forEach((participant) => {
+        console.log(`🔊 Remote participant: ${participant.identity}, tracks: ${participant.trackPublications.size}`)
+        participant.trackPublications.forEach((publication) => {
+          console.log(`🔊 Track: kind=${publication.kind}, subscribed=${publication.isSubscribed}`)
+          if (publication.kind === Track.Kind.Audio && !publication.isSubscribed) {
+            console.log('🔊 Subscribing to audio track...')
+            publication.setSubscribed(true)
+          }
+        })
+      })
+    }
+
+    // Subscribe on mount and when participants change
+    subscribeToAudio()
+    room.on(RoomEvent.TrackPublished, subscribeToAudio)
+    room.on(RoomEvent.ParticipantConnected, subscribeToAudio)
+
+    return () => {
+      room.off(RoomEvent.TrackPublished, subscribeToAudio)
+      room.off(RoomEvent.ParticipantConnected, subscribeToAudio)
+    }
+  }, [room])
+
   // Get local video track
   const videoTracks = useTracks([Track.Source.Camera], { onlySubscribed: false })
   const localCameraTrack = videoTracks.find(t => t.participant.identity === localParticipant?.identity)
+
+  // Log participant connections for debugging
+  useEffect(() => {
+    if (!room) return
+
+    console.log('🔌 Room connected, checking participants...')
+    console.log(`🔌 Local participant: ${localParticipant?.identity}`)
+    console.log(`🔌 Remote participants: ${room.remoteParticipants.size}`)
+    room.remoteParticipants.forEach((p) => {
+      console.log(`🔌 Remote: ${p.identity}`)
+    })
+
+    const handleParticipantConnected = (participant: any) => {
+      console.log(`🔌 Participant connected: ${participant.identity}`)
+    }
+
+    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected)
+
+    return () => {
+      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected)
+    }
+  }, [room, localParticipant])
 
   // Track AI speaking state via active speakers
   useEffect(() => {
@@ -210,9 +263,9 @@ function InterviewRoomContent({
   useEffect(() => {
     if (!room) return
 
-    const handleDataReceived = (payload: Uint8Array, participant: any) => {
+    const handleDataReceived = (payload: Uint8Array, _participant: any) => {
       // Allow receiving from self if it's a transcript update we committed
-      // if (participant?.identity === localParticipant?.identity) return
+      // if (_participant?.identity === localParticipant?.identity) return
 
       try {
         const message = new TextDecoder().decode(payload)

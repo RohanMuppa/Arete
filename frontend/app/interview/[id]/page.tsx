@@ -13,44 +13,6 @@ import {
   type StartInterviewResponse
 } from '@/lib/api'
 
-// Fallback problem when backend isn't available
-const FALLBACK_PROBLEM = {
-  id: 'two_sum',
-  title: 'Two Sum',
-  difficulty: 'Easy',
-  description: `Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
-
-You may assume that each input would have exactly one solution, and you may not use the same element twice.
-
-You can return the answer in any order.`,
-  examples: [
-    {
-      input: 'nums = [2,7,11,15], target = 9',
-      output: '[0,1]',
-      explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].'
-    },
-    {
-      input: 'nums = [3,2,4], target = 6',
-      output: '[1,2]'
-    }
-  ],
-  constraints: [
-    '2 ≤ nums.length ≤ 10⁴',
-    '-10⁹ ≤ nums[i] ≤ 10⁹',
-    '-10⁹ ≤ target ≤ 10⁹',
-    'Only one valid answer exists.'
-  ],
-  starter_code: `def twoSum(nums: list[int], target: int) -> list[int]:
-    """
-    Given an array of integers nums and an integer target,
-    return indices of the two numbers that add up to target.
-    """
-    # Write your solution here
-    pass
-`
-}
-
-
 export default function InterviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [timer, setTimer] = useState(0)
@@ -65,11 +27,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   // API state
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [problem, setProblem] = useState(DEFAULT_PROBLEM)
+  const [problem, setProblem] = useState<StartInterviewResponse['problem'] | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hintsUsed, setHintsUsed] = useState(0)
-  const [currentCode, setCurrentCode] = useState(DEFAULT_PROBLEM.starter_code)
+  const [currentCode, setCurrentCode] = useState<string>('')
 
   // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null)
@@ -150,17 +112,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       })
 
       setSessionId(response.session_id)
-      // Backend returns flat fields, use them with fallback problem for missing fields
-      setProblem({
-        id: params.id,
-        title: (response as any).problem_title || DEFAULT_PROBLEM.title,
-        difficulty: DEFAULT_PROBLEM.difficulty,
-        description: DEFAULT_PROBLEM.description,
-        examples: DEFAULT_PROBLEM.examples,
-        constraints: DEFAULT_PROBLEM.constraints,
-        starter_code: (response as any).starter_code || DEFAULT_PROBLEM.starter_code,
-      })
-      setCurrentCode((response as any).starter_code || DEFAULT_PROBLEM.starter_code)
+      setProblem(response.problem)
+      setCurrentCode(response.problem.starter_code)
       setIsConnected(true)
       setShowSetup(false)  // Transition to interview view
       setIsLoading(false)
@@ -178,7 +131,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       console.error('Failed to start interview:', error)
       setIsLoading(false)
       setIsStarting(false)
-      // Show error to user - NO FALLBACK MODE
+      // Show error to user
       alert('Failed to connect to interview backend. Please check that the backend is running.')
     }
   }, [candidateName, params.id, handleWSMessage])
@@ -300,7 +253,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
                 <div className="text-sm text-[var(--text-secondary)]">
-                  You will solve <span className="font-medium">{DEFAULT_PROBLEM.title}</span> ({DEFAULT_PROBLEM.difficulty}) in a simulated Google-style technical interview.
+                  Solve coding problems in a simulated Google-style technical interview with real-time AI feedback.
                 </div>
               </div>
 
@@ -330,7 +283,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   // Loading state (transitioning to interview)
-  if (isLoading) {
+  if (isLoading || !problem) {
     return (
       <div className="flex items-center justify-center h-screen bg-[var(--bg-primary)]">
         <div className="text-center space-y-4">

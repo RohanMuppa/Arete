@@ -17,7 +17,12 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run build:*)",
       "WebSearch",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pip show:*)",
+      "Bash(python -m uvicorn:*)",
+      "Bash(python -m livekit_agent dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }

@@ -155,12 +155,12 @@ def run_interview(
 ) -> InterviewState:
     """
     Start a new interview session.
-    
-    Returns initial state after problem presentation.
+
+    Returns initial state immediately - the AI greeting comes via LiveKit agent.
     """
     # Create initial state
     state = create_initial_state(session_id, candidate_name, problem)
-    
+
     # Log session start
     log_event(
         "SESSION_START",
@@ -171,14 +171,10 @@ def run_interview(
             "problem_title": problem["title"],
         }
     )
-    
-    # Run graph to present problem
-    graph = create_interview_graph()
-    compiled = graph.compile()
-    
-    result = compiled.invoke(state)
-    
-    return result
+
+    # Return state immediately - no LLM call here
+    # The LiveKit agent will handle the greeting via voice
+    return state
 
 
 def process_code_snapshot(

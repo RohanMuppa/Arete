@@ -42,7 +42,10 @@ export interface RunCodeRequest {
 }
 
 export interface RunCodeResponse {
-  results: Array<{
+  passed: number
+  failed: number
+  total: number
+  details: Array<{
     case: number
     passed: boolean
     input: string
@@ -50,8 +53,7 @@ export interface RunCodeResponse {
     actual?: string
     error?: string
   }>
-  all_passed: boolean
-  execution_time_ms: number
+  stderr?: string
 }
 
 export interface SubmitSolutionRequest {

@@ -83,7 +83,7 @@ ALWAYS end with a clear question or affirmation to invite the candidate to speak
 
 class InterviewerAgent(Agent):
     """Custom interview agent with code execution capabilities."""
-    
+
     def __init__(self, problem: ProblemInfo, state: dict, on_disconnect: Callable[[], Awaitable[None]] = None):
         super().__init__(
             instructions=INTERVIEWER_INSTRUCTIONS.format(
@@ -92,11 +92,17 @@ class InterviewerAgent(Agent):
                 problem_prompt=problem["prompt"],
                 constraints="\n".join(f"- {c}" for c in problem.get("constraints", [])),
                 optimal_approach=problem["optimal_approach"],
-            ) # + "\n\nYou have access to the candidate's code. Use the `run_tests` tool to verify their solution when they ask or when they think they are done.\nIf the candidate says they are finished or wants to end the interview, use the `end_interview` tool."
+            )
         )
         self.problem = problem
         self.state = state
         self.on_disconnect = on_disconnect
+
+    async def on_enter(self):
+        """Called when agent becomes active - send greeting."""
+        logger.info("Agent on_enter called - generating greeting...")
+        # Generate initial greeting reply
+        self.session.generate_reply()
     
     @llm.function_tool(description="End the interview session.")
     async def end_interview(self, reason: Annotated[str, "The reason for ending the interview"] = "completed"):
@@ -202,12 +208,7 @@ async def entrypoint(ctx: JobContext):
     tts_plugin = elevenlabs.TTS(
         api_key=settings.elevenlabs_api_key or None,
         voice_id=settings.elevenlabs_voice_id or "21m00Tcm4TlvDq8ikWAM",  # Defaults to Rachel
-        model_id="eleven_turbo_v2_5", # Use Turbo for lowest latency (~250ms)
-        voice_settings=elevenlabs.VoiceSettings(
-            stability=0.5, 
-            similarity_boost=0.75,
-            speed=1.15, # Faster, more conversational pace
-        )
+        model="eleven_turbo_v2_5",  # Use Turbo for lowest latency (~250ms)
     )
     
     # Initialize AgentSession with Plugins
@@ -238,63 +239,25 @@ async def entrypoint(ctx: JobContext):
     # Create the Interviewer Agent explicitly
     interviewer = InterviewerAgent(problem, state, on_disconnect=lambda: ctx.room.disconnect())
 
-    # --- EVENT LISTENERS (Attached to Agent, not Session) ---
-    @interviewer.on("user_speech_committed")
+    # --- EVENT LISTENERS (Attached to Session) ---
+    @session.on("user_speech_committed")
     def on_user_speech(msg: llm.ChatMessage):
-        # DEBUG LOGGING
-        logger.info(f"USER SPEECH COMMITTED: type={type(msg.content)} raw={msg.content}")
-        
-        content = ""
-        if isinstance(msg.content, list):
-            parts = []
-            for c in msg.content:
-                if isinstance(c, str):
-                    parts.append(c)
-                elif hasattr(c, "text"):
-                    parts.append(c.text)
-                else:
-                    parts.append(str(c))
-            content = " ".join(parts)
-        else:
-            content = str(msg.content)
-
-        logger.info(f"Unknown extracted content: '{content}'")
+        logger.info(f"USER SPEECH COMMITTED: {msg.content}")
+        content = str(msg.content) if not isinstance(msg.content, list) else " ".join(
+            c if isinstance(c, str) else getattr(c, "text", str(c)) for c in msg.content
+        )
         asyncio.create_task(broadcast_transcript("candidate", content))
 
-    @interviewer.on("agent_speech_committed")
+    @session.on("agent_speech_committed")
     def on_agent_speech(msg: llm.ChatMessage):
-        # DEBUG LOGGING
-        logger.info(f"AGENT SPEECH COMMITTED: type={type(msg.content)} raw={msg.content}")
-        
-        content = ""
-        if isinstance(msg.content, list):
-            parts = []
-            for c in msg.content:
-                if isinstance(c, str):
-                    parts.append(c)
-                elif hasattr(c, "text"):
-                    parts.append(c.text)
-                else:
-                    parts.append(str(c))
-            content = " ".join(parts)
-        else:
-            content = str(msg.content)
-            
-        logger.info(f"Agent extracted content: '{content}'")
+        logger.info(f"AGENT SPEECH COMMITTED: {msg.content}")
+        content = str(msg.content) if not isinstance(msg.content, list) else " ".join(
+            c if isinstance(c, str) else getattr(c, "text", str(c)) for c in msg.content
+        )
         asyncio.create_task(broadcast_transcript("ai", content))
 
     # Start the session with our custom interviewer agent
-    async def initiate_chat():
-        await asyncio.sleep(1.5) # Wait for session to fully stabilize
-        logger.info("Triggering initial greeting...")
-        try:
-             # Use the agent to say the greeting if possible, or session
-            await session.say("Hi, I'm Sarah, and I'll be conducting your interview today. How are you doing?", allow_interruptions=True)
-        except Exception as e:
-            logger.warning(f"Could not initiate chat: {e}")
-
-    asyncio.create_task(initiate_chat())
-
+    # The greeting is triggered via on_enter() method in InterviewerAgent class
     await session.start(
         agent=interviewer,
         room=ctx.room,

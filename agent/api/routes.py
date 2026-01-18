@@ -37,12 +37,23 @@ class StartInterviewRequest(BaseModel):
     problem_id: str = Field(..., min_length=1)
 
 
+class ProblemResponse(BaseModel):
+    """Problem data for frontend."""
+    id: str
+    title: str
+    description: str
+    difficulty: str
+    examples: list[dict[str, Any]]
+    constraints: list[str]
+    starter_code: str
+    test_cases: list[dict[str, Any]]
+
+
 class StartInterviewResponse(BaseModel):
     """Response with new session details."""
     session_id: str
     candidate_name: str
-    problem_title: str
-    starter_code: str
+    problem: ProblemResponse
     welcome_message: str
 
 
@@ -192,12 +203,30 @@ async def start_interview(request: StartInterviewRequest) -> StartInterviewRespo
     welcome = ""
     if state.get("conversation_history"):
         welcome = state["conversation_history"][0]["content"]
-    
+
+    # Build problem response with examples from test cases
+    examples = [
+        {
+            "input": str(tc["input"]),
+            "output": str(tc["expected"]),
+            "explanation": tc.get("explanation", "")
+        }
+        for tc in problem.get("test_cases", [])[:2]  # Show first 2 as examples
+    ]
+
     return StartInterviewResponse(
         session_id=session_id,
         candidate_name=request.candidate_name,
-        problem_title=problem["title"],
-        starter_code=problem["starter_code"],
+        problem=ProblemResponse(
+            id=problem["id"],
+            title=problem["title"],
+            description=problem["prompt"],
+            difficulty=problem["difficulty"],
+            examples=examples,
+            constraints=problem.get("constraints", []),
+            starter_code=problem["starter_code"],
+            test_cases=problem.get("test_cases", []),
+        ),
         welcome_message=welcome,
     )
 
@@ -551,16 +580,19 @@ def _worker_entry(code: str, test_cases: list[dict], q: multiprocessing.Queue):
                     result["passed"] += 1
                 else:
                     result["failed"] += 1
-                    result["details"].append({
-                        "case": i + 1,
-                        "input": tc["input"],
-                        "expected": expected,
-                        "actual": actual,
-                    })
+                
+                result["details"].append({
+                    "case": i + 1,
+                    "passed": passed,
+                    "input": tc["input"],
+                    "expected": expected,
+                    "actual": actual,
+                })
             except Exception as e:
                 result["failed"] += 1
                 result["details"].append({
                     "case": i + 1,
+                    "passed": False,
                     "input": tc["input"],
                     "error": str(e),
                 })
