@@ -15,7 +15,9 @@
       "Bash(grep:*)",
       "Skill(ralph-loop:cancel-ralph)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(python3:*)"
     ]
   }
 }

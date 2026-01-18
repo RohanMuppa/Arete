@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     
     # ElevenLabs (TTS)
     elevenlabs_api_key: str = ""
-    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
+    elevenlabs_voice_id: str = "EXAVITQu4vr4xnSDxMaL"  # Default: Sarah
     
     # Deepgram (STT)
     deepgram_api_key: str = ""

@@ -50,15 +50,6 @@ You can return the answer in any order.`,
 `
 }
 
-// Fallback AI messages when backend isn't available
-// NOTE: First message delay should be > 2000ms because DemoModeAvatar sends initial greeting at 2s
-// This avoids duplicate greetings and ensures __areteSpeakAI is available
-const FALLBACK_AI_MESSAGES = [
-  { delay: 10000, text: "Take your time to think through the problem. Feel free to think out loud." },
-  { delay: 30000, text: "I see you're working on a solution. What's your approach?" },
-  { delay: 50000, text: "Good progress! Consider the time complexity of your current approach." },
-  { delay: 75000, text: "Have you thought about using a hash map for O(1) lookups?" },
-]
 
 export default function InterviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -115,20 +106,6 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     }, 100)
   }, [])
 
-  // Fallback simulated AI messages when backend isn't available
-  // In Demo mode, we need to call TTS via the globally exposed __areteSpeakAI function
-  const startFallbackMessages = useCallback(() => {
-    FALLBACK_AI_MESSAGES.forEach((msg) => {
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'ai', text: msg.text }])
-        // In Demo mode, call TTS via the globally exposed function from LiveKitRoom
-        const speakFn = (window as any).__areteSpeakAI
-        if (speakFn) {
-          speakFn(msg.text)
-        }
-      }, msg.delay)
-    })
-  }, [])
 
   // Handle WebSocket messages from AI
   // NOTE: TTS comes from LiveKit agent, not browser - just update transcript
@@ -185,6 +162,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       })
       setCurrentCode((response as any).starter_code || FALLBACK_PROBLEM.starter_code)
       setIsConnected(true)
+      setShowSetup(false)  // Transition to interview view
+      setIsLoading(false)
 
       // Connect WebSocket for real-time communication
       const ws = createInterviewWebSocket(
@@ -196,17 +175,13 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       wsRef.current = ws
 
     } catch (error) {
-      console.error('Backend connection error:', error)
-      console.log('Backend not available, using fallback mode')
-      // Use fallback mode with simulated messages
-      setIsConnected(false)
-      startFallbackMessages()
-    } finally {
+      console.error('Failed to start interview:', error)
       setIsLoading(false)
-      setShowSetup(false)
       setIsStarting(false)
+      // Show error to user - NO FALLBACK MODE
+      alert('Failed to connect to interview backend. Please check that the backend is running.')
     }
-  }, [candidateName, params.id, handleWSMessage, startFallbackMessages])
+  }, [candidateName, params.id, handleWSMessage])
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -246,16 +221,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   // Handle running code
   const handleRunCode = useCallback(async (code: string) => {
     if (!sessionId || !isConnected) {
-      // Fallback mode - return mock results
-      return {
-        results: [
-          { case: 1, passed: false, input: '[2, 7, 11, 15], target = 9', expected: '[0, 1]', actual: 'Error: Backend disconnected', error: 'Demo Mode: Cannot run tests' },
-          { case: 2, passed: false, input: '[3, 2, 4], target = 6', expected: '[1, 2]', actual: 'Error: Backend disconnected', error: 'Demo Mode: Cannot run tests' },
-          { case: 3, passed: false, input: '[3, 3], target = 6', expected: '[0, 1]', actual: 'Error: Backend disconnected', error: 'Demo Mode: Cannot run tests' },
-        ],
-        all_passed: false,
-        execution_time_ms: 0,
-      }
+      // No backend connection - cannot run code
+      throw new Error('Backend not connected. Cannot execute code.')
     }
 
     try {
@@ -269,30 +236,26 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   // Handle final submission
   const handleSubmit = async () => {
+    if (!sessionId || !isConnected) {
+      alert('Backend not connected. Cannot submit solution.')
+      return
+    }
+
     setIsSubmitting(true)
     setMessages(prev => [...prev, { role: 'ai', text: "Great work! Let me review your solution..." }])
 
-    if (sessionId && isConnected) {
-      try {
-        const result = await apiClient.submitSolution(sessionId, {
-          code: currentCode,
-        })
-        // Redirect to dashboard
-        setTimeout(() => {
-          router.push(result.redirect_url || `/dashboard/${sessionId}`)
-        }, 2000)
-      } catch (error) {
-        console.error('Failed to submit:', error)
-        // Fallback to demo dashboard
-        setTimeout(() => {
-          router.push(`/dashboard/${params.id}`)
-        }, 2000)
-      }
-    } else {
-      // Fallback mode - just redirect to dashboard
+    try {
+      const result = await apiClient.submitSolution(sessionId, {
+        code: currentCode,
+      })
+      // Redirect to dashboard
       setTimeout(() => {
-        router.push(`/dashboard/${params.id}`)
+        router.push(result.redirect_url || `/dashboard/${sessionId}`)
       }, 2000)
+    } catch (error) {
+      console.error('Failed to submit:', error)
+      setIsSubmitting(false)
+      alert('Failed to submit solution. Please try again.')
     }
   }
 
@@ -322,6 +285,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                   placeholder="Enter your name"
                   className="w-full px-4 py-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--accent-primary)] transition-colors"
                   autoFocus
+                  suppressHydrationWarning
                 />
               </div>
 
@@ -394,11 +358,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {isConnected ? (
-              <span className="badge badge-info">LIVE</span>
-            ) : (
-              <span className="badge badge-warning text-xs">DEMO</span>
-            )}
+            <span className="badge badge-info">LIVE</span>
             <div className="font-mono text-lg font-semibold">
               {formatTime(timer)}
             </div>
@@ -430,8 +390,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
               <button
                 onClick={() => setActiveTab('problem')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'problem'
-                    ? 'text-[var(--text-primary)] border-b-2 border-[var(--accent-primary)]'
-                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                  ? 'text-[var(--text-primary)] border-b-2 border-[var(--accent-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
                   }`}
               >
                 Problem
@@ -439,8 +399,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
               <button
                 onClick={() => setActiveTab('transcript')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'transcript'
-                    ? 'text-[var(--text-primary)] border-b-2 border-[var(--accent-primary)]'
-                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                  ? 'text-[var(--text-primary)] border-b-2 border-[var(--accent-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
                   }`}
               >
                 Transcript
@@ -506,14 +466,14 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                       <div
                         key={idx}
                         className={`animate-fade-in p-3 rounded-lg ${msg.role === 'ai'
-                            ? 'bg-[var(--accent-primary)]/10 border-l-2 border-[var(--accent-primary)]'
-                            : 'bg-[var(--accent-emerald)]/10 border-l-2 border-[var(--accent-emerald)]'
+                          ? 'bg-[var(--accent-primary)]/10 border-l-2 border-[var(--accent-primary)]'
+                          : 'bg-[var(--accent-emerald)]/10 border-l-2 border-[var(--accent-emerald)]'
                           }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${msg.role === 'ai'
-                              ? 'bg-[var(--accent-primary)] text-white'
-                              : 'bg-[var(--accent-emerald)] text-white'
+                            ? 'bg-[var(--accent-primary)] text-white'
+                            : 'bg-[var(--accent-emerald)] text-white'
                             }`}>
                             {msg.role === 'ai' ? 'AI' : 'ME'}
                           </div>
@@ -554,7 +514,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             <div className="flex items-center gap-2">
               <span className="text-[var(--text-tertiary)]">Status:</span>
               <span className="text-[var(--accent-emerald)] font-medium">
-                {isConnected ? 'Recording' : 'Demo Mode'}
+                Recording
               </span>
             </div>
             <div className="flex items-center gap-2">

@@ -1,7 +1,14 @@
 'use client'
 
-import { Editor } from '@monaco-editor/react'
+import { Editor, loader } from '@monaco-editor/react'
 import { useState, useEffect } from 'react'
+
+// Configure Monaco loader to use usage unpkg to avoid source map 404s
+loader.config({
+  paths: {
+    vs: 'https://unpkg.com/monaco-editor@0.55.1/min/vs',
+  },
+})
 
 interface TestResult {
   case: number
