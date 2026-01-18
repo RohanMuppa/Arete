@@ -36,6 +36,7 @@ class FairnessResult(TypedDict):
     normalized_scores: InterviewScores
     recommendation: str
     confidence: float
+    reasoning: str
 
 
 class ConversationMessage(TypedDict):

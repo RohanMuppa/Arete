@@ -54,14 +54,18 @@ Analyze for:
 4. SCORING FAIRNESS: Do the scores match the actual performance evidence?
 5. MICROAGGRESSIONS: Any subtle biased language or assumptions?
 
+RECOMMENDATION CRITERIA (VERY HIGH BAR):
+- PASS: Candidate MUST have correctly solved the problem with working code AND clearly explained their approach. Partial success is NOT enough.
+- FAIL: Anything mediocre, confused, incomplete, or requiring hand-holding. When in doubt, FAIL.
+
 Respond in this exact format:
 BIAS_DETECTED: [true|false]
 FAIRNESS_SCORE: [0.0-10.0]
 FLAGS: [comma-separated list of issues, or "none"]
 SCORE_ADJUSTMENT: [If scores need adjustment, explain. Otherwise "none needed"]
-RECOMMENDATION: [STRONG HIRE|HIRE|LEAN NO HIRE|NO HIRE]
+RECOMMENDATION: [PASS|FAIL]
 CONFIDENCE: [0.0-1.0]
-REASONING: [Brief explanation of your analysis]"""
+REASONING: [Explain WHY you chose PASS or FAIL. Cite specific evidence from the transcript.]"""
 
 
 NORMALIZE_HINT_PENALTY = {
@@ -164,6 +168,7 @@ class FairnessAgent:
         flags = self._parse_list(content, "FLAGS")
         recommendation = self._parse_string(content, "RECOMMENDATION", "LEAN NO HIRE")
         confidence = self._parse_float(content, "CONFIDENCE", 0.7)
+        reasoning = self._parse_string(content, "REASONING", "No reasoning provided")
         
         # Normalize scores based on hints
         normalized_scores = self._normalize_scores(
@@ -178,6 +183,7 @@ class FairnessAgent:
             normalized_scores=normalized_scores,
             recommendation=recommendation,
             confidence=confidence,
+            reasoning=reasoning,
         )
         
         # Log the analysis
@@ -191,6 +197,7 @@ class FairnessAgent:
                     "fairness_score": fairness_score,
                     "flags": flags,
                     "recommendation": recommendation,
+                    "reasoning": reasoning,
                 }
             }
         )
@@ -253,10 +260,17 @@ class FairnessAgent:
         return default
     
     def _parse_string(self, content: str, key: str, default: str) -> str:
-        """Parse string value from response."""
-        for line in content.split("\n"):
+        """Parse string value from response. For REASONING, captures all remaining content."""
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
             if line.strip().upper().startswith(key.upper() + ":"):
-                return line.split(":", 1)[1].strip()
+                # Get value on same line
+                value = line.split(":", 1)[1].strip()
+                # If key is REASONING, also capture subsequent lines until end
+                if key.upper() == "REASONING":
+                    remaining = lines[i+1:]
+                    value = value + " " + " ".join(l.strip() for l in remaining if l.strip())
+                return value
         return default
     
     def _parse_list(self, content: str, key: str) -> list[str]:
