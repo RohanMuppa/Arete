@@ -1,10 +1,60 @@
 'use client'
-
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { mockInterviewResult } from '@/lib/mockData'
+import { apiClient, type InterviewReport } from '@/lib/api'
 
 export default function DashboardPage({ params }: { params: { id: string } }) {
-  const data = mockInterviewResult
+  const [data, setData] = useState<InterviewReport | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const report = await apiClient.getReport(params.id)
+        setData(report)
+      } catch (err) {
+        console.error('Failed to benefit report:', err)
+        setError('Failed to load interview report. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchReport()
+    }
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 mx-auto border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[var(--text-secondary)]">Loading report...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 mx-auto bg-red-500/10 text-red-500 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-display text-[var(--text-primary)]">Error</h3>
+          <p className="text-[var(--text-secondary)]">{error || 'Report not found'}</p>
+          <Link href="/" className="btn btn-primary px-4 py-2 mt-4 inline-block">
+            Go Home
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const getRecommendationColor = (rec: string) => {
     if (rec.includes('Strong Hire')) return 'text-[var(--accent-emerald)]'
@@ -181,12 +231,11 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
               {data.timeline.map((item, i) => (
                 <div key={i} className="flex items-start gap-4">
                   <span className="font-mono text-sm text-[var(--text-tertiary)] w-12">{item.timestamp}</span>
-                  <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                    item.type === 'hint' ? 'bg-[var(--accent-amber)]' :
+                  <div className={`w-2 h-2 rounded-full mt-1.5 ${item.type === 'hint' ? 'bg-[var(--accent-amber)]' :
                     item.type === 'submission' ? 'bg-[var(--accent-primary)]' :
-                    item.type === 'start' || item.type === 'end' ? 'bg-[var(--accent-emerald)]' :
-                    'bg-[var(--text-muted)]'
-                  }`} />
+                      item.type === 'start' || item.type === 'end' ? 'bg-[var(--accent-emerald)]' :
+                        'bg-[var(--text-muted)]'
+                    }`} />
                   <span className="text-[var(--text-secondary)]">{item.event}</span>
                 </div>
               ))}
@@ -199,11 +248,10 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
           <h2 className="font-display text-2xl mb-6">Hiring Committee</h2>
           <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className={`px-4 py-2 rounded-lg font-medium ${
-                data.hiring_committee.vote === 'Hire'
-                  ? 'bg-[var(--accent-emerald)]/10 text-[var(--accent-emerald)]'
-                  : 'bg-[var(--accent-rose)]/10 text-[var(--accent-rose)]'
-              }`}>
+              <div className={`px-4 py-2 rounded-lg font-medium ${data.hiring_committee.vote === 'Hire'
+                ? 'bg-[var(--accent-emerald)]/10 text-[var(--accent-emerald)]'
+                : 'bg-[var(--accent-rose)]/10 text-[var(--accent-rose)]'
+                }`}>
                 {data.hiring_committee.vote}
               </div>
               <span className="text-[var(--text-secondary)]">→</span>
@@ -250,7 +298,7 @@ export default function DashboardPage({ params }: { params: { id: string } }) {
             <button className="btn btn-secondary">
               Export PDF
             </button>
-            <Link href="/interview/demo" className="btn btn-primary">
+            <Link href="/interview/two-sum" className="btn btn-primary">
               New Interview
             </Link>
           </div>
