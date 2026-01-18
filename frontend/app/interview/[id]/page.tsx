@@ -173,16 +173,17 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       })
 
       setSessionId(response.session_id)
+      // Backend returns flat fields, use them with fallback problem for missing fields
       setProblem({
-        id: response.problem.id,
-        title: response.problem.title,
-        difficulty: response.problem.difficulty,
-        description: response.problem.description,
-        examples: response.problem.examples,
-        constraints: response.problem.constraints,
-        starter_code: response.problem.starter_code,
+        id: params.id === 'demo' ? 'two_sum' : params.id,
+        title: (response as any).problem_title || FALLBACK_PROBLEM.title,
+        difficulty: FALLBACK_PROBLEM.difficulty,
+        description: FALLBACK_PROBLEM.description,
+        examples: FALLBACK_PROBLEM.examples,
+        constraints: FALLBACK_PROBLEM.constraints,
+        starter_code: (response as any).starter_code || FALLBACK_PROBLEM.starter_code,
       })
-      setCurrentCode(response.problem.starter_code)
+      setCurrentCode((response as any).starter_code || FALLBACK_PROBLEM.starter_code)
       setIsConnected(true)
 
       // Connect WebSocket for real-time communication
@@ -195,6 +196,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       wsRef.current = ws
 
     } catch (error) {
+      console.error('Backend connection error:', error)
       console.log('Backend not available, using fallback mode')
       // Use fallback mode with simulated messages
       setIsConnected(false)

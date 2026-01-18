@@ -166,7 +166,8 @@ class APIClient {
   constructor() {
     this.baseUrl = API_BASE_URL
     this.wsBaseUrl = WS_BASE_URL
-    this.timeout = 2000 // 2 second timeout for API calls (fast fail for tests)
+    this.timeout = 30000 // 30 second timeout for API calls
+    console.log('API Client initialized with Base URL:', this.baseUrl)
   }
 
   // Start a new interview session

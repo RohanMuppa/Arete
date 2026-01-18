@@ -1,8 +1,8 @@
 {
-  "session_id": "interview-d76fb151",
+  "session_id": "interview-ca539c2e",
   "candidate_name": "Candidate",
-  "started_at": "2026-01-18T09:51:15.426240",
-  "ended_at": "2026-01-18T09:51:39.843438",
+  "started_at": "2026-01-18T10:11:32.337606",
+  "ended_at": "2026-01-18T10:13:19.485340",
   "problem": {
     "id": "two_sum",
     "title": "Two Sum",
@@ -67,19 +67,19 @@
   "conversation_history": [
     {
       "role": "assistant",
-      "content": "Hi, I'm Sarah, and I'll be conducting your interview today. How are"
+      "content": "Hi, I'm Sarah, and I'll be conducting your interview today. How are you doing?"
+    },
+    {
+      "role": "user",
+      "content": "Yeah."
     },
     {
       "role": "user",
       "content": "Hello?"
     },
     {
-      "role": "user",
-      "content": "Can you hear me?"
-    },
-    {
       "role": "assistant",
-      "content": "Yes, I can hear you, are you ready to begin the interview?"
+      "content": "Now that we have introductions out of the way, let's get started with the first problem, can you tell me how you would approach solving the Two Sum problem?"
     }
   ],
   "code_submissions": [],
@@ -89,9 +89,13 @@
   "interviewer_notes": null,
   "raw_scores": null,
   "fairness_result": {
-    "bias_detected": false,
-    "fairness_score": 7.5,
-    "flags": [],
+    "bias_detected": true,
+    "fairness_score": 3.0,
+    "flags": [
+      "inappropriate tone",
+      "unfair scoring",
+      "microaggressions"
+    ],
     "normalized_scores": {
       "correctness": 5,
       "optimization": 5,
@@ -99,8 +103,8 @@
       "problem_solving": 5
     },
     "recommendation": "FAIL",
-    "confidence": 0.8,
-    "reasoning": "While the interview appears to have been conducted in a professional manner with no obvious bias or inappropriate questions, the candidate's performance does not meet the high bar for a passing recommendation. The raw scores of 5/10 across all categories indicate the candidate struggled significantly with the problem and was unable to provide a working solution. The lack of any code submission further confirms the candidate did not successfully solve the problem. Even though no hints were provided, the candidate's problem-solving and communication skills were not strong enough to warrant a passing recommendation. The scores accurately reflect the candidate's limited ability to tackle this easy-level problem. Given the clear evidence of the candidate's inability to solve the problem, a FAIL recommendation is appropriate, despite the lack of bias in the interview process. More practice and preparation would be needed for the candidate to demonstrate the required level of technical competence."
+    "confidence": 0.9,
+    "reasoning": "There are several issues with this interview that indicate potential bias: 1. INAPPROPRIATE QUESTIONS: The interviewer's tone is curt and dismissive, with no attempt to put the candidate at ease or build rapport. This could make the candidate feel uncomfortable and underperform. 2. HINT DISTRIBUTION: No hints were provided, despite the candidate's clear struggle with the problem. This suggests the interviewer may have had preconceived notions about the candidate's abilities. 3. TONE CONSISTENCY: The interviewer maintains an unprofessional, impatient tone throughout the short interview, which is not conducive to a fair assessment. 4. SCORING FAIRNESS: The scores do not align with the candidate's actual performance, which was unable to produce any working code. Scoring them at 5/10 across the board is unreasonably generous. 5. MICROAGGRESSIONS: The interviewer's brief, one-word responses and lack of follow-up questions convey a sense of disinterest or disengagement, which could be interpreted as a microaggression. Overall, the evidence suggests the interviewer may have had biases that influenced their assessment of the candidate. The scores should be adjusted downward, and the interview process should be reviewed to ensure more consistent, empathetic, and fair treatment of all candidates."
   },
   "final_recommendation": null,
   "interview_complete": false

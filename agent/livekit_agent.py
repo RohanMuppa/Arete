@@ -148,8 +148,8 @@ class InterviewerAgent(Agent):
 def prewarm(proc: JobProcess):
     """Prewarm resources for faster startup."""
     proc.userdata["vad"] = silero.VAD.load(
-        min_speech_duration=0.1,  # Def: 0.05
-        min_silence_duration=0.4, # Def: 0.55 (Decrease makes it snappier)
+        min_speech_duration=0.05,  # Def: 0.05 - highly sensitive
+        min_silence_duration=0.2, # Def: 0.55 - much faster end of speech
     )
 
 
@@ -194,13 +194,19 @@ async def entrypoint(ctx: JobContext):
     )
 
     # Config for TTS (ElevenLabs)
+    if not settings.elevenlabs_api_key:
+        logger.warning("WARNING: ELEVENLABS_API_KEY is not set. Using fallback/default voice!")
+    else:
+        logger.info(f"Using ElevenLabs TTS with voice: {settings.elevenlabs_voice_id or 'default'}")
+
     tts_plugin = elevenlabs.TTS(
         api_key=settings.elevenlabs_api_key or None,
         voice_id=settings.elevenlabs_voice_id or "21m00Tcm4TlvDq8ikWAM",  # Defaults to Rachel
+        model_id="eleven_turbo_v2_5", # Use Turbo for lowest latency (~250ms)
         voice_settings=elevenlabs.VoiceSettings(
-            stability=0.5, # Default usually 0.5
-            similarity_boost=0.75, # Default usually 0.75
-            speed=0.88, # Make it slower (0.8-1.2 range)
+            stability=0.5, 
+            similarity_boost=0.75,
+            speed=1.15, # Faster, more conversational pace
         )
     )
     
@@ -212,86 +218,77 @@ async def entrypoint(ctx: JobContext):
         tts=tts_plugin,
     )
 
-    # --- DATA CHANNEL & PERSISTENCE ---
-    @ctx.room.on("data_received")
-    def on_data(datapacket: rtc.DataPacket):
-        """Receive code snapshots from frontend."""
+    # --- TRANSCRIPT BROADCASTING ---
+    async def broadcast_transcript(role: str, text: str):
+        """Send transcript update to frontend via data channel."""
         try:
-            payload = datapacket.data.decode("utf-8")
-            try:
-                data = json.loads(payload)
-                if data.get("type") == "code_snapshot":
-                    state["code_snapshot"] = data.get("code", "")
-                    logger.info(f"Updated code snapshot (len={len(state['code_snapshot'])})")
-            except json.JSONDecodeError:
-                pass
+            payload = json.dumps({
+                "type": "transcript",
+                "role": role,
+                "text": text,
+                "timestamp": datetime.now().isoformat()
+            })
+            await ctx.room.local_participant.publish_data(
+                payload,
+                reliable=True,
+            )
         except Exception as e:
-            logger.warning(f"Failed to process data packet: {e}")
+            logger.warning(f"Failed to broadcast transcript: {e}")
 
-    # --- HACKATHON QUICK INTEGRATION ---
-    from .agents.fairness import FairnessAgent
-    from .graph.state import ConversationMessage
-    
-    # Run Fairness Analysis on close
-    @session.on("close")
-    def on_close(event: CloseEvent):
-        logger.info("Session closing, running FAIRNESS ANALYSIS...")
-        try:
-            # 1. Populate state from session history
-            # The session automatically maintains the chat context
-            for msg in session.history.items:
-                if msg.type == "message" and msg.role in ("user", "assistant"):
-                    # content can be str or list of Content, we assume simple text for now
-                    text_content = msg.content
-                    if isinstance(text_content, list):
-                        text_content = " ".join([str(c) for c in text_content])
-                    
-                    state["conversation_history"].append(
-                        ConversationMessage(
-                            role=msg.role, 
-                            content=str(text_content)
-                        )
-                    )
-            
-            logger.info(f"Captured {len(state['conversation_history'])} messages for analysis.")
+    # Create the Interviewer Agent explicitly
+    interviewer = InterviewerAgent(problem, state, on_disconnect=lambda: ctx.room.disconnect())
 
-            # 2. Run Fairness Agent
-            fairness_agent = FairnessAgent()
-            state["ended_at"] = datetime.now().isoformat()
-            
-            result = fairness_agent.analyze_interview(state)
-            
-            logger.info("==========================================")
-            logger.info("          FAIRNESS REPORT                 ")
-            logger.info("==========================================")
-            logger.info(f"Bias Detected: {result['bias_detected']}")
-            logger.info(f"Fairness Score: {result['fairness_score']}/10")
-            logger.info(f"Recommendation: {result['recommendation']}")
-            logger.info(f"Reasoning: {result['reasoning']}")
-            logger.info(f"Flags: {result['flags']}")
-            logger.info("==========================================")
-            
-            # Add fairness result to state
-            state["fairness_result"] = dict(result)
-            
-            # Save report
-            filename = f"session_{state['session_id']}.json"
-            with open(filename, "w") as f:
-                json.dump(state, f, indent=2, default=str)
-            logger.info(f"Saved session report to {filename}")
+    # --- EVENT LISTENERS (Attached to Agent, not Session) ---
+    @interviewer.on("user_speech_committed")
+    def on_user_speech(msg: llm.ChatMessage):
+        # DEBUG LOGGING
+        logger.info(f"USER SPEECH COMMITTED: type={type(msg.content)} raw={msg.content}")
+        
+        content = ""
+        if isinstance(msg.content, list):
+            parts = []
+            for c in msg.content:
+                if isinstance(c, str):
+                    parts.append(c)
+                elif hasattr(c, "text"):
+                    parts.append(c.text)
+                else:
+                    parts.append(str(c))
+            content = " ".join(parts)
+        else:
+            content = str(msg.content)
 
-        except Exception as e:
-            logger.error(f"Failed to run fairness analysis: {e}", exc_info=True)
+        logger.info(f"Unknown extracted content: '{content}'")
+        asyncio.create_task(broadcast_transcript("candidate", content))
 
-    # -----------------------------------
-    
+    @interviewer.on("agent_speech_committed")
+    def on_agent_speech(msg: llm.ChatMessage):
+        # DEBUG LOGGING
+        logger.info(f"AGENT SPEECH COMMITTED: type={type(msg.content)} raw={msg.content}")
+        
+        content = ""
+        if isinstance(msg.content, list):
+            parts = []
+            for c in msg.content:
+                if isinstance(c, str):
+                    parts.append(c)
+                elif hasattr(c, "text"):
+                    parts.append(c.text)
+                else:
+                    parts.append(str(c))
+            content = " ".join(parts)
+        else:
+            content = str(msg.content)
+            
+        logger.info(f"Agent extracted content: '{content}'")
+        asyncio.create_task(broadcast_transcript("ai", content))
+
     # Start the session with our custom interviewer agent
     async def initiate_chat():
-        await asyncio.sleep(2.0) # Wait for session to fully stabilize
+        await asyncio.sleep(1.5) # Wait for session to fully stabilize
         logger.info("Triggering initial greeting...")
         try:
-            # Trigger the agent to speak by simulating a system prompt
-            # Explicitly forbid tool calls to prevent hallucinations like `introduce_and_present_problem`
+             # Use the agent to say the greeting if possible, or session
             await session.say("Hi, I'm Sarah, and I'll be conducting your interview today. How are you doing?", allow_interruptions=True)
         except Exception as e:
             logger.warning(f"Could not initiate chat: {e}")
@@ -299,7 +296,7 @@ async def entrypoint(ctx: JobContext):
     asyncio.create_task(initiate_chat())
 
     await session.start(
-        agent=InterviewerAgent(problem, state, on_disconnect=lambda: ctx.room.disconnect()),
+        agent=interviewer,
         room=ctx.room,
     )
     

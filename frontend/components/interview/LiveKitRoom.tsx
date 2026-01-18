@@ -48,7 +48,7 @@ function LiveKitRoomWrapperInner({ sessionId, candidateName, onConnect, onMessag
   useEffect(() => {
     const fetchToken = async () => {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout (fast fail for tests)
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
 
       try {
         const response = await fetch(
@@ -69,6 +69,8 @@ function LiveKitRoomWrapperInner({ sessionId, candidateName, onConnect, onMessag
         clearTimeout(timeoutId)
         if (err.name === 'AbortError') {
           console.log('LiveKit token fetch aborted')
+          setError('Connection timed out')
+          setIsLoading(false)
           return
         }
         console.error('LiveKit token error:', err)
@@ -195,16 +197,27 @@ function InterviewRoomContent({
     if (!room) return
 
     const handleDataReceived = (payload: Uint8Array, participant: any) => {
-      if (participant?.identity === localParticipant?.identity) return
+      // Allow receiving from self if it's a transcript update we committed
+      // if (participant?.identity === localParticipant?.identity) return
 
       try {
         const message = new TextDecoder().decode(payload)
+        console.log('📨 Data channel message:', message)
         const data = JSON.parse(message)
-        if (data.type === 'transcript' || data.type === 'message') {
+        
+        if (data.type === 'transcript') {
+          // Format based on role for page.tsx handler
+          const text = data.role === 'candidate' || data.role === 'user' 
+            ? `You: ${data.text}`
+            : data.text
+            
+          onMessage?.(text)
+        } else if (data.type === 'message') {
           onMessage?.(data.text)
         }
-      } catch {
-        // Plain text message
+      } catch (e) {
+        console.error('Failed to parse data channel message:', e)
+        // Fallback for plain text
         const text = new TextDecoder().decode(payload)
         if (text.trim()) {
           onMessage?.(text)
@@ -1273,6 +1286,10 @@ function DemoModeAvatar({
   if (layout === 'side-by-side') {
     return (
       <div className="relative w-full h-full bg-[var(--bg-tertiary)] overflow-hidden">
+        {/* Fallback Mode Banner */}
+        <div className="bg-amber-500/90 text-black text-xs font-bold px-4 py-1 text-center z-50 animate-pulse">
+          ⚠️ FALLBACK MODE: Using Browser Speech Engine (Backend Unavailable)
+        </div>
         {/* Click to Start Overlay - Required for browser autoplay policy */}
         {showStartPrompt && !hasUserInteracted && (
           <div
@@ -1438,6 +1455,10 @@ function DemoModeAvatar({
   // Default PiP layout for Demo mode
   return (
     <div className="relative w-full h-full bg-[var(--bg-tertiary)] rounded-xl overflow-hidden">
+      {/* Fallback Mode Banner */}
+      <div className="absolute top-0 left-0 right-0 bg-amber-500/90 text-black text-xs font-bold px-4 py-1 text-center z-50 animate-pulse">
+        ⚠️ FALLBACK MODE: Using Browser Speech Engine (Backend Unavailable)
+      </div>
       {/* Click to Start Overlay - Required for browser autoplay policy */}
       {showStartPrompt && !hasUserInteracted && (
         <div

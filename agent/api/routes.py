@@ -154,16 +154,12 @@ async def get_token(session_id: str, candidate_name: str) -> TokenResponse:
     if not settings.livekit_url or not settings.livekit_api_key or not settings.livekit_api_secret:
         raise HTTPException(status_code=500, detail="LiveKit not configured")
 
-    # Grant access to the room
-    grant = api.VideoGrants(room_join=True, room=session_id)
-    
-    # Create token
-    token = api.AccessToken(
-        settings.livekit_api_key,
-        settings.livekit_api_secret,
-        grant=grant,
-        identity=candidate_name,
-        name=candidate_name,
+    # Create token using builder pattern (new SDK API)
+    token = (
+        api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
+        .with_identity(candidate_name)
+        .with_name(candidate_name)
+        .with_grants(api.VideoGrants(room_join=True, room=session_id))
     )
     
     return TokenResponse(
