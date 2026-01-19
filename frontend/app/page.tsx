@@ -21,17 +21,17 @@ export default function Home() {
             {/* Laurel Wreath */}
             <div className="flex items-center justify-center gap-6 mb-4">
               <svg className="w-12 h-12 text-[var(--text-tertiary)]" viewBox="0 0 64 64" fill="none">
-                <path d="M28 8c-4 4-6 10-6 16s2 12 6 16c-8-2-14-10-14-16s6-14 14-16z" fill="currentColor"/>
-                <path d="M24 14c-3 3-4 8-4 12s1 9 4 12c-6-2-10-8-10-12s4-10 10-12z" fill="currentColor" opacity="0.6"/>
-                <path d="M20 20c-2 2-3 5-3 8s1 6 3 8c-4-2-7-5-7-8s3-6 7-8z" fill="currentColor" opacity="0.3"/>
+                <path d="M28 8c-4 4-6 10-6 16s2 12 6 16c-8-2-14-10-14-16s6-14 14-16z" fill="currentColor" />
+                <path d="M24 14c-3 3-4 8-4 12s1 9 4 12c-6-2-10-8-10-12s4-10 10-12z" fill="currentColor" opacity="0.6" />
+                <path d="M20 20c-2 2-3 5-3 8s1 6 3 8c-4-2-7-5-7-8s3-6 7-8z" fill="currentColor" opacity="0.3" />
               </svg>
               <h1 className="font-display text-7xl text-[var(--text-primary)]">
                 Areté
               </h1>
               <svg className="w-12 h-12 text-[var(--text-tertiary)] scale-x-[-1]" viewBox="0 0 64 64" fill="none">
-                <path d="M28 8c-4 4-6 10-6 16s2 12 6 16c-8-2-14-10-14-16s6-14 14-16z" fill="currentColor"/>
-                <path d="M24 14c-3 3-4 8-4 12s1 9 4 12c-6-2-10-8-10-12s4-10 10-12z" fill="currentColor" opacity="0.6"/>
-                <path d="M20 20c-2 2-3 5-3 8s1 6 3 8c-4-2-7-5-7-8s3-6 7-8z" fill="currentColor" opacity="0.3"/>
+                <path d="M28 8c-4 4-6 10-6 16s2 12 6 16c-8-2-14-10-14-16s6-14 14-16z" fill="currentColor" />
+                <path d="M24 14c-3 3-4 8-4 12s1 9 4 12c-6-2-10-8-10-12s4-10 10-12z" fill="currentColor" opacity="0.6" />
+                <path d="M20 20c-2 2-3 5-3 8s1 6 3 8c-4-2-7-5-7-8s3-6 7-8z" fill="currentColor" opacity="0.3" />
               </svg>
             </div>
             <p className="text-lg text-[var(--text-secondary)] font-body italic">
@@ -70,11 +70,8 @@ export default function Home() {
 
           {/* CTA */}
           <div className={`flex justify-center gap-4 mb-20 animate-slide-up delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-            <Link href="/interview/demo" className="btn btn-primary px-8 py-4 text-base">
-              Interview Demo
-            </Link>
-            <Link href="/dashboard/abc123" className="btn btn-secondary px-8 py-4 text-base">
-              Recruiter Dashboard
+            <Link href="/interview/two-sum" className="btn btn-primary px-8 py-4 text-base">
+              Start Interview
             </Link>
           </div>
 

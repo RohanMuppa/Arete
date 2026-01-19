@@ -1,0 +1,287 @@
+{
+  "session_id": "demo",
+  "candidate_name": "Candidate",
+  "started_at": "2026-01-18T10:11:35.819413",
+  "ended_at": "2026-01-18T10:18:56.537995",
+  "problem": {
+    "id": "two_sum",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "prompt": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.",
+    "starter_code": "def twoSum(nums: list[int], target: int) -> list[int]:\n    # Your code here\n    pass",
+    "optimal_approach": "Use a hash map to store seen values and their indices. Iterate through the array, check if target - current_val exists in the map. As you iterate, two numbers that add up to target will be found. This approach allows for O(n) time complexity and O(n) space complexity.",
+    "constraints": [
+      "2 <= nums.length <= 10^4",
+      "-10^9 <= nums[i] <= 10^9",
+      "-10^9 <= target <= 10^9",
+      "Only one valid answer exists."
+    ],
+    "test_cases": [
+      {
+        "input": {
+          "nums": [
+            2,
+            7,
+            11,
+            15
+          ],
+          "target": 9
+        },
+        "expected": [
+          0,
+          1
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            3,
+            2,
+            4
+          ],
+          "target": 6
+        },
+        "expected": [
+          1,
+          2
+        ]
+      },
+      {
+        "input": {
+          "nums": [
+            3,
+            3
+          ],
+          "target": 6
+        },
+        "expected": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "code_snapshot": "def twoSum(nums: list[int], target: int) -> list[int]:\n    # Your code here\n    pass",
+  "code_history": [],
+  "last_code_change_at": null,
+  "conversation_history": [
+    {
+      "role": "assistant",
+      "content": "Hi, I'm Sarah, and I'll be conducting your interview today. How are you doing?"
+    },
+    {
+      "role": "user",
+      "content": "Yeah. I'm gonna do that since you grab a snack real quick."
+    },
+    {
+      "role": "assistant",
+      "content": "I'll just wait for a moment, can you confirm when you are ready to begin the interview?"
+    },
+    {
+      "role": "user",
+      "content": "I'm about like"
+    },
+    {
+      "role": "assistant",
+      "content": "Are you ready to start the interview and solve the Two Sum problem I am about to present?"
+    },
+    {
+      "role": "user",
+      "content": "I make sure Jay's awake, brother?"
+    },
+    {
+      "role": "user",
+      "content": "Let me check."
+    },
+    {
+      "role": "user",
+      "content": "Yeah. I wanna go back to bed."
+    },
+    {
+      "role": "user",
+      "content": "Me too."
+    },
+    {
+      "role": "user",
+      "content": "Yeah. I'm gonna how we gonna play that?"
+    },
+    {
+      "role": "user",
+      "content": "I wanna I wanna I wanna I wanna I wanna get back"
+    },
+    {
+      "role": "user",
+      "content": "What? I do not wanna get on a plane, man. Dude, when I get on a plane, man, I can watch Hunter Hunter."
+    },
+    {
+      "role": "user",
+      "content": "And I don't wanna I don't wanna send any email about my laptop right now."
+    },
+    {
+      "role": "assistant",
+      "content": "Let's get back on track, shall we, are you ready to"
+    },
+    {
+      "role": "user",
+      "content": "I'm doing I'm sending I'm I'm I know. I'm"
+    },
+    {
+      "role": "user",
+      "content": "Yeah. I might well, first, I'm gonna first, I'm gonna I'm gonna I'm gonna start the the download process for a bunch of FireWire."
+    },
+    {
+      "role": "assistant",
+      "content": "Let's focus on the interview, can you"
+    },
+    {
+      "role": "user",
+      "content": "And I gotta I gotta start the process for"
+    },
+    {
+      "role": "user",
+      "content": "You know how the process is."
+    },
+    {
+      "role": "user",
+      "content": "I would show off."
+    },
+    {
+      "role": "user",
+      "content": "Hi. I'm Sarah. Finish. I think I I think I I finished the"
+    },
+    {
+      "role": "user",
+      "content": "New York New York."
+    },
+    {
+      "role": "user",
+      "content": "Hello?"
+    },
+    {
+      "role": "user",
+      "content": "Take your time to think through"
+    },
+    {
+      "role": "user",
+      "content": "catch. He he looks a little creepy."
+    },
+    {
+      "role": "assistant",
+      "content": "It seems like we've gotten off track, can you please focus on the Two Sum problem and tell me how you plan to solve it?"
+    },
+    {
+      "role": "user",
+      "content": "Yeah. It's like ten thirty."
+    },
+    {
+      "role": "user",
+      "content": "Wait. They said we have to finish. We're done hacking it, like, one."
+    },
+    {
+      "role": "user",
+      "content": "What are we doing at one?"
+    },
+    {
+      "role": "user",
+      "content": "It's lunch. And then one thirty is"
+    },
+    {
+      "role": "user",
+      "content": "touching."
+    },
+    {
+      "role": "user",
+      "content": "I thought four was judging."
+    },
+    {
+      "role": "assistant",
+      "content": "It seems"
+    },
+    {
+      "role": "user",
+      "content": "I was the guys said judging that forward."
+    },
+    {
+      "role": "user",
+      "content": "K. Diaz is at one thirty. It ends at four. Right? Get what?"
+    },
+    {
+      "role": "assistant",
+      "content": "Let's get"
+    },
+    {
+      "role": "user",
+      "content": "Dude, where is judging, bro?"
+    },
+    {
+      "role": "user",
+      "content": "Man?"
+    },
+    {
+      "role": "assistant",
+      "content": "It seems like you're not focused on the interview,"
+    },
+    {
+      "role": "user",
+      "content": "And I've been judging big guys that people do, like, judging that Carnegie music all that more."
+    },
+    {
+      "role": "user",
+      "content": "Yeah. But now they're saying,"
+    },
+    {
+      "role": "user",
+      "content": "the schedule, it says the doors open."
+    },
+    {
+      "role": "user",
+      "content": "Five"
+    },
+    {
+      "role": "assistant",
+      "content": "I think we're having a hard time staying on track, should I end the interview?"
+    },
+    {
+      "role": "user",
+      "content": "You're also probably gonna be on your phone like after that too."
+    },
+    {
+      "role": "user",
+      "content": "Probably not."
+    },
+    {
+      "role": "assistant",
+      "content": "I think it's best if we wrap things"
+    },
+    {
+      "role": "user",
+      "content": "I mean, we're going to bed in, like, nine hours."
+    }
+  ],
+  "code_submissions": [],
+  "current_analysis": null,
+  "hints_given": 0,
+  "encouragements_given": 0,
+  "interviewer_notes": null,
+  "raw_scores": null,
+  "fairness_result": {
+    "bias_detected": true,
+    "fairness_score": 2.0,
+    "flags": [
+      "inappropriate questions",
+      "lack of professionalism",
+      "inconsistent scoring"
+    ],
+    "normalized_scores": {
+      "correctness": 5,
+      "optimization": 5,
+      "communication": 5,
+      "problem_solving": 5
+    },
+    "recommendation": "FAIL",
+    "confidence": 0.9,
+    "reasoning": "This interview transcript shows significant issues that indicate bias and unfair treatment of the candidate: 1. INAPPROPRIATE QUESTIONS: The interviewer appears to be asking irrelevant and confusing questions that are completely unrelated to the coding problem. There is no evidence of the interviewer actually assessing the candidate's technical skills. 2. HINT DISTRIBUTION: No hints were provided, even though the candidate was clearly struggling to engage with the problem. This suggests the interviewer may have unfairly withheld support. 3. TONE CONSISTENCY: The interviewer's tone is unprofessional and disjointed, jumping between different topics without any clear structure or purpose. This creates an uncomfortable and unfair environment for the candidate. 4. SCORING FAIRNESS: The scores assigned by the interviewer do not seem to match the candidate's actual performance, which was very poor. This indicates potential bias in the scoring. 5. MICROAGGRESSIONS: The interviewer's questions and responses contain subtle biased language, such as referring to the candidate as \"brother\" and making assumptions about their interests (\"you can watch Hunter Hunter\"). Overall, this interview transcript shows clear signs of bias, unprofessional conduct, and unfair treatment of the candidate. The scores should be adjusted downward, and the recommendation should be to FAIL the candidate based on their inability to engage with the coding problem. The high level of issues detected in this interview raises significant concerns about the fairness and validity of the process."
+  },
+  "final_recommendation": null,
+  "interview_complete": false
+}

@@ -1,0 +1,91 @@
+🚀 Starting ARETE...
+
+[0;34mLoading environment variables from .env...[0m
+[0;32mStarting Backend API (FastAPI)...[0m
+INFO:     Started server process [87305]
+INFO:     Waiting for application startup.
+2026-01-18 11:15:16,280 - agent.main - INFO - Starting ARETE Agent Core...
+2026-01-18 11:15:16,284 - agent.main - INFO - Phoenix tracing enabled: http://localhost:6006
+2026-01-18 11:15:16,284 - agent.main - INFO - Using interviewer model: meta-llama/llama-3.3-70b-instruct:friendli
+2026-01-18 11:15:16,284 - agent.main - INFO - Using fairness model: anthropic/claude-3-haiku
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58719 - "GET /health HTTP/1.1" 200 OK
+[0;32m✓ Backend API running at http://localhost:8000[0m
+
+[0;32mStarting LiveKit Agent (AI Interviewer with STT/TTS)...[0m
+/Users/athapa/.pyenv/versions/3.12.12/lib/python3.12/site-packages/pydantic/_internal/_fields.py:132: UserWarning: Field "model_name" in Metadata has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/Users/athapa/.pyenv/versions/3.12.12/lib/python3.12/site-packages/pydantic/_internal/_fields.py:132: UserWarning: Field "model_provider" in Metadata has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+11:15:18.688 - livekit - INFO - livekit_ffi::server:139:livekit_ffi::server - initializing ffi server v0.12.42
+11:15:18.688 - livekit - INFO - livekit_ffi::cabi:50:livekit_ffi::cabi - initializing ffi server v0.12.42
+11:15:18.691 - asyncio - DEBUG - Using selector: KqueueSelector
+    11:15:18.691 DEBUG  asyncio            Using selector: KqueueSelector  
+11:15:18.692 - livekit.agents - DEV - Watching /Users/athapa/Documents/GitHub/nexhacks-26/agent
+    11:15:18.692 DEV    livekit.agents     Watching                             
+                                           /Users/athapa/Documents/GitHub/nex…  
+/Users/athapa/.pyenv/versions/3.12.12/lib/python3.12/site-packages/pydantic/_internal/_fields.py:132: UserWarning: Field "model_name" in Metadata has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+/Users/athapa/.pyenv/versions/3.12.12/lib/python3.12/site-packages/pydantic/_internal/_fields.py:132: UserWarning: Field "model_provider" in Metadata has conflict with protected namespace "model_".
+
+You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+  warnings.warn(
+11:15:19.724 - livekit - INFO - livekit_ffi::server:139:livekit_ffi::server - initializing ffi server v0.12.42
+11:15:19.724 - livekit - INFO - livekit_ffi::cabi:50:livekit_ffi::cabi - initializing ffi server v0.12.42
+11:15:19.725 - asyncio - DEBUG - Using selector: KqueueSelector
+    11:15:19.725 DEBUG  asyncio            Using selector: KqueueSelector  
+11:15:19.728 - livekit.agents - INFO - starting worker
+    11:15:19.728 INFO   livekit.agents     starting worker  
+                                         {"version": "1.3.11", "rtc-version": 
+"1.0.23"}
+11:15:19.730 - livekit.agents - INFO - HTTP server listening on :58722
+    11:15:19.730 INFO   livekit.agents     HTTP server listening on :58722  
+11:15:19.844 - livekit.agents - INFO - registered worker
+    11:15:19.844 INFO   livekit.agents     registered worker  
+                                         {"agent_name": "", "id": 
+"AW_qMrBcaLJXRKn", "url": "wss://nexhacks26-quenr5jv.livekit.cloud", "region": 
+"US East B", "protocol": 16}
+[0;32m✓ LiveKit Agent started (listens for voice, responds with AI)[0m
+
+[0;32mStarting Frontend (Next.js) on port 3001...[0m
+
+> arete-frontend@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 915ms
+
+[0;32m========================================[0m
+[0;32m  ARETE is running![0m
+[0;32m========================================[0m
+
+  Frontend:      [1;33mhttp://localhost:3001[0m
+  Backend API:   [1;33mhttp://127.0.0.1:8000[0m
+  API Docs:      [1;33mhttp://127.0.0.1:8000/docs[0m
+
+  [0;34mLiveKit Agent:[0m Listening for voice input
+    - STT: Deepgram (speech-to-text)
+    - LLM: OpenRouter (AI responses)
+    - TTS: ElevenLabs (text-to-speech)
+
+  Press [0;31mCtrl+C[0m to stop all servers
+
+ ○ Compiling / ...
+ ✓ Compiled / in 635ms (511 modules)
+ GET / 200 in 779ms
+ ✓ Compiled in 102ms (264 modules)
+ ✓ Compiled /interview/[id] in 226ms (561 modules)
+INFO:     127.0.0.1:58762 - "OPTIONS /api/v1/interviews HTTP/1.1" 200 OK
+2026-01-18 11:15:48,046 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+ GET / 200 in 55ms

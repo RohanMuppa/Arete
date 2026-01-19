@@ -1,7 +1,14 @@
 'use client'
 
-import { Editor } from '@monaco-editor/react'
-import { useState } from 'react'
+import { Editor, loader } from '@monaco-editor/react'
+import { useState, useEffect } from 'react'
+
+// Configure Monaco loader to use usage unpkg to avoid source map 404s
+loader.config({
+  paths: {
+    vs: 'https://unpkg.com/monaco-editor@0.55.1/min/vs',
+  },
+})
 
 interface TestResult {
   case: number
@@ -12,8 +19,9 @@ interface TestResult {
 }
 
 interface CodeEditorProps {
+  initialCode?: string
   onCodeChange?: (code: string) => void
-  onRunCode?: (code: string) => void
+  onRunCode?: (code: string) => Promise<{ details: Array<TestResult>; passed: number; failed: number; total: number; stderr?: string } | void>
 }
 
 const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
@@ -25,10 +33,19 @@ const STARTER_CODE = `def twoSum(nums: list[int], target: int) -> list[int]:
     pass
 `
 
-export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps) {
-  const [code, setCode] = useState(STARTER_CODE)
+export default function CodeEditor({ initialCode, onCodeChange, onRunCode }: CodeEditorProps) {
+  const [code, setCode] = useState(initialCode || STARTER_CODE)
   const [testResults, setTestResults] = useState<TestResult[] | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Expose current code globally for AI to access
+  useEffect(() => {
+    (window as any).__areteCurrentCode = code
+    return () => {
+      delete (window as any).__areteCurrentCode
+    }
+  }, [code])
 
   const handleCodeChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -38,44 +55,37 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
   }
 
   const handleRunCode = async () => {
+    if (!onRunCode) return
+
     setIsRunning(true)
+    setError(null)
 
-    setTimeout(() => {
-      const mockResults: TestResult[] = [
-        {
-          case: 1,
-          passed: true,
-          input: '[2, 7, 11, 15], target = 9',
-          expected: '[0, 1]',
-          actual: '[0, 1]'
-        },
-        {
-          case: 2,
-          passed: true,
-          input: '[3, 2, 4], target = 6',
-          expected: '[1, 2]',
-          actual: '[1, 2]'
-        },
-        {
-          case: 3,
-          passed: false,
-          input: '[3, 3], target = 6',
-          expected: '[0, 1]',
-          actual: 'None'
+    try {
+      const result = await onRunCode(code)
+
+      if (result && result.details) {
+        setTestResults(result.details)
+        if (result.stderr) {
+          setError(result.stderr)
         }
-      ]
-
-      setTestResults(mockResults)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to run code')
+    } finally {
       setIsRunning(false)
-      onRunCode?.(code)
-    }, 1500)
+    }
   }
 
   const passedTests = testResults?.filter(r => r.passed).length ?? 0
   const totalTests = testResults?.length ?? 0
 
+  const formatValue = (val: any) => {
+    if (typeof val === 'object') return JSON.stringify(val)
+    return String(val)
+  }
+
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e]">
+    <div className="flex flex-col h-full min-h-0 bg-[#1e1e1e]">
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3c3c3c]">
         <div className="flex items-center gap-3">
@@ -90,8 +100,8 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
         >
           {isRunning ? (
             <>
-              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Running...
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Running...</span>
             </>
           ) : (
             <>
@@ -135,7 +145,6 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
             autoSurround: 'never',
             formatOnType: false,
             formatOnPaste: false,
-            suggest: { enabled: false },
             inlineSuggest: { enabled: false },
             hover: { enabled: false },
             codeLens: false,
@@ -146,14 +155,20 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
         />
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="px-4 py-2 bg-[#f14c4c]/10 border-b border-[#f14c4c]/20 text-[#f14c4c] text-xs font-mono">
+          Error: {error}
+        </div>
+      )}
+
       {/* Test Results Panel */}
       {testResults && (
         <div className="flex-shrink-0 border-t border-[#3c3c3c] bg-[#1e1e1e] max-h-48 overflow-y-auto">
           <div className="px-4 py-2 border-b border-[#3c3c3c] flex items-center justify-between">
             <span className="text-sm text-[#cccccc]">Test Results</span>
-            <span className={`text-sm font-mono ${
-              passedTests === totalTests ? 'text-[#4ec9b0]' : 'text-[#ce9178]'
-            }`}>
+            <span className={`text-sm font-mono ${passedTests === totalTests ? 'text-[#4ec9b0]' : 'text-[#ce9178]'
+              }`}>
               {passedTests}/{totalTests} passed
             </span>
           </div>
@@ -168,11 +183,11 @@ export default function CodeEditor({ onCodeChange, onRunCode }: CodeEditorProps)
                   <span className="text-sm text-[#cccccc]">Test {result.case}</span>
                 </div>
                 <div className="text-xs text-[#6b6b6b] font-mono space-y-0.5">
-                  <div>Input: {result.input}</div>
+                  <div>Input: {formatValue(result.input)}</div>
                   <div className="flex gap-4">
-                    <span>Expected: {result.expected}</span>
-                    {!result.passed && result.actual && (
-                      <span className="text-[#f14c4c]">Got: {result.actual}</span>
+                    <span>Expected: {formatValue(result.expected)}</span>
+                    {!result.passed && result.actual !== undefined && (
+                      <span className="text-[#f14c4c]">Got: {formatValue(result.actual)}</span>
                     )}
                   </div>
                 </div>
