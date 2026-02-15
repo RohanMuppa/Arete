@@ -1,4 +1,5 @@
 # ARETE
+Built By Rohan Muppa and Ayush Thaapa
 
 AI-powered technical interview platform. Conducts live coding interviews with real-time voice, code execution, and fairness monitoring.
 
