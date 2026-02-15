@@ -1,9 +1,8 @@
 # ARETE
-Built By Rohan Muppa and Ayush Thaapa
+Built By Rohan Muppa and Ayush Thaapa at **NexHacks 2026 @ CMU**.
 
 AI-powered technical interview platform. Conducts live coding interviews with real-time voice, code execution, and fairness monitoring.
 
-Built at **NexHacks 2026 @ CMU**.
 
 ## what it does
 
